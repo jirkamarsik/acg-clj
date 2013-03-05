@@ -24,6 +24,37 @@
      (n/hash x y)
      (lookupo c x tx)))
 
+(l/defne typeo-new [ic lc x t]
+  ([ic [] c t]
+     (l/== c (l/partial-map {:type t})))
+  ([ic [] v t]
+     (lookupo ic v t))
+  ([ic [[v t]] v t])
+  ([ic lc [lam binder] [arrow at bt]]
+     (n/fresh [a]
+              (l/fresh [b nic nlc]
+                       (l/== binder (n/tie a b))
+                       (l/conde [(l/== lam 'llam)
+                                 (l/== arrow '->)
+                                 (l/conso [a at] lc nlc)
+                                 (l/== ic nic)]
+                                [(l/== lam 'ilam)
+                                 (l/== arrow '=>)
+                                 (l/== lc nlc)
+                                 (l/conso [a at] ic nic)])
+                       (n/hash a ic)
+                       (n/hash a lc)
+                       (typeo-new nic nlc b bt))))
+  ([ic c ['app f a] t]
+     (l/fresh [c1 c2 ft at]
+              (l/conde [(l/== ft ['-> at t])
+                        (mergeo c1 c2 c)]
+                       [(l/== ft ['=> at t])
+                        (l/== c1 c)
+                        (l/== c2 [])])
+              (typeo-new ic c1 f ft)
+              (typeo-new ic c2 a at))))
+
 (l/defne typeo [const ic lc x t]
   ([const ic [] ['const c] t]
      (l/membero [c t] const))
