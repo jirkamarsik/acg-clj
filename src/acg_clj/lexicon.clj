@@ -3,7 +3,8 @@
             [clojure.string :as string]
             [clojure.core.logic :as l]
             [clojure.core.logic.nominal :as n])
-  (:use plumbing.core))
+  (:use plumbing.core
+        acg-clj.core))
 
 (defn parse-hypertag [hypertag-text]
   (reduce (partial apply assoc-in)
@@ -103,28 +104,27 @@
                          (if ('#{ll il} (first term))
                            :lam
                            :app)
-                         :const)))
+                         :var)))
 
 (defmethod read-term :lam [[lam [v & vs :as vars] body] env]
   (if (empty? vars)
     (read-term body env)
-    (let [new-nom (n/nom (l/lvar v))
-          new-env (assoc env v new-nom)
+    (let [new-env (assoc env v v)
           emitted-lam ('{ll llam, il ilam} lam)]
-      [emitted-lam (n/tie new-nom 
-                          (read-term (list lam vs body) new-env))])))
+      [emitted-lam [v] (read-term (list lam vs body) new-env)])))
 
 (defmethod read-term :app [term env]
   (reduce (fn [f a]
             ['app f a])
           (map #(read-term % env) term)))
 
-(defmethod read-term :const [term env]
-  (let [maybe-resolved (and (symbol? term) (resolve term))]
-    (cond (contains? env term) (get env term)
-          (var? maybe-resolved) (deref maybe-resolved)
-          (class? maybe-resolved) maybe-resolved
-          :else term)))
+(defmethod read-term :var [term env]
+  (let [maybe-resolved (and (symbol? term) (resolve term))
+        term (cond (contains? env term) (get env term)
+                   (var? maybe-resolved) (deref maybe-resolved)
+                   (class? maybe-resolved) maybe-resolved
+                   :else term)]
+    ['var term]))
 
 (defmacro rt [term]
   (let [local-env (into {} (for [s (keys &env)]
@@ -139,36 +139,33 @@
                               (derive 'llam 'lam)
                               (derive 'ilam 'lam)))
 
-(defmulti print-term (some-fn term-type class)
-  :hierarchy #'print-term-hierarchy)
-
-(defmethod print-term :default [term]
-  (if (and (map? term) (contains? term :print-as))
-    (get term :print-as)
-    term))
-
-(defmethod print-term clojure.core.logic.nominal.Nom [nom]
-  (.oname (.lvar nom)))
+(defmulti print-term term-type :hierarchy #'print-term-hierarchy)
 
 (defmethod print-term 'app [[app f a]]
   (if (= (term-type f) 'app)
     (concat (print-term f) (list (print-term a)))
     (list (print-term f) (print-term a))))
 
-(defmethod print-term 'lam [[lam tie]]
+(defmethod print-term 'lam [[lam [v] body]]
   (let [written-lam ('{llam ll, ilam il} lam)
-        bound-nom (.binding-nom tie)
-        bound-sym (if (symbol? bound-nom)
-                    bound-nom                    ; reified terms
-                    (.oname (.lvar bound-nom)))  ; non-reified terms
-        body (print-term (.body tie))]
+        body (print-term body)]
     (if (and (sequential? body) (= (first body) written-lam))
-      (let [[_ inner-bound-syms body] body
-            bound-syms (vec (cons bound-sym inner-bound-syms))]
-        (list written-lam bound-syms body))
-      (list written-lam [bound-sym] body))))
+      (let [[_ inner-vars body] body
+            vars (vec (cons v inner-vars))]
+        (list written-lam vars body))
+      (list written-lam [v] body))))
+
+(defmethod print-term 'var [[var v]]
+  (if (and (map? v) (contains? v :print-as))
+    (get v :print-as)
+    v))
 
 (def pt print-term)
+
+(defn drop-constraints [result]
+  (if (and (seq? result) (= (second result) :-))
+    (first result)
+    result))
 
 
 (defn apply-lex [lex-name term]

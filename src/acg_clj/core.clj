@@ -25,11 +25,11 @@
      (lookupo rc x tx)))
 
 (l/defne typeo [c ic lc x t]
-  ([_ _ _ _ _]
-     (l/conde [(lookupo c x :l)
-               (l/== lc [[x t]])]
-              [(lookupo c x :i)
-               (lookupo ic x t)]))
+  ([_ _ _ ['var v] _]
+     (l/conde [(lookupo c v :l)
+               (l/== lc [[v t]])]
+              [(lookupo c v :i)
+               (lookupo ic v t)]))
   ([_ _ _ [lam [v] b] [arrow vt bt]]
      (l/fresh [nic nlc nc]
               (l/conde [(l/== lam 'llam)
