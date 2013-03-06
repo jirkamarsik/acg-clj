@@ -167,239 +167,167 @@
     (first result)
     result))
 
-
-(defn apply-lex [lex-name term]
-    (cond (and (map? term) (contains? term lex-name)) (get term lex-name)
-          (vector? term) (vec (map (partial apply-lex lex-name) term))
-          (n/tie? term)
-          ,(clojure.core.logic.nominal.Tie. (.binding-nom term)
-                                            (apply-lex lex-name (.body term))
-                                            (._meta term))
-          :else term))
-
+(l/defne apply-lexo [lexo abs-term obj-term]
+  ([_ ['var abs-v] ['var obj-v]]
+     (l/conda [(lexo abs-v obj-v)]
+              [(l/== abs-v obj-v)]))
+  ([_ [lam [v] abs-b] [lam [v] obj-b]]
+     (l/membero lam '[llam ilam])
+     (apply-lexo lexo abs-b obj-b))
+  ([_ ['app abs-f abs-a] ['app obj-f obj-a]]
+     (apply-lexo lexo abs-f obj-f)
+     (apply-lexo lexo abs-a obj-a)))
 
 (defn hypertago [hypertag]
   (l/fresh [wordform]
            (lexicono wordform hypertag)))
 
 
-(defn print-as-wordform [hypertag print-as]
-  (lexicono print-as hypertag))
+
+(defn unityped [unitype]
+  (fn [hypertag type]
+    (l/== type unitype)))
+
+(defmacro fs-match [patterns]
+  (let [hypertag-sym (gensym "hypertag")
+        out-sym (gensym "out")
+        goals (for [[pat val] patterns]
+                `[(retrievec ~hypertag-sym ~pat)
+                  (l/== ~out-sym ~val)])]
+    `(fn [~hypertag-sym ~out-sym]
+       (l/conde ~@goals))))
 
 
+(def lambda-string-sig
+  {:principal-type '[-> Sigma Sigma]
+   :lex-typeo (unityped '[-> Sigma Sigma])})
+
+(def string-sig
+  {:principal-type 'Str
+   :constants '{++ [-> Str [-> Str Str]]}
+   :lex-typeo (unityped 'Str)})
+
+(def unamb-syntax-sig
+  {:principal-type 'S
+   :lex-typeo (fs-match {{:head {:cat "n"}}       'N
+                         {:head {:cat "adj"}}     '[-> N N]
+                         {:head {:cat "det"}}     '[-> N NP]
+                         {:head {:cat "v"
+                                 :trans "false"}} '[-> NP S]})})
+
+(def semantics-sig
+  {:principal-type 'T
+   :constants '{and?    [-> T [-> T T]]
+                or?     [-> T [-> T T]]
+                not?    [-> T T]
+                imp?    [-> T [-> T T]]
+                top     T
+                bottom  T
+                forall? [-> [=> E T] T]
+                exists? [-> [=> E T] T]}
+   :lex-typeo (fs-match {{:head {:cat "n"}}       '[-> E T]
+                         {:head {:cat "adj"}}     '[-> E T]
+                         {:head {:cat "v"
+                                 :trans "false"}} '[-> E T]})})
+
+(def amb-syntax-sig
+  {:principal-type 'S
+   :lex-typeo (fs-match {{:head {:cat "n"}}       'N
+                         {:head {:cat "adj"}}     '[-> N N]
+                         {:head {:cat "v"
+                                 :trans "false"}} '[-> NP S]
+                         {:head {:cat "det"}}     '[-> N NP]})})
 
 
-(def lambda-string-principal-type '[-> Sigma Sigma])
-
-(defn lambda-string-typeo [hypertag type]
-  (l/== type '[-> Sigma Sigma]))
-
-(def lambda-string-printo print-as-wordform)
-
-(defn lambda-string-sigo [hypertag constant]
-  (l/fresh [type print-as]
-           (hypertago hypertag)
-           (lambda-string-typeo hypertag type)
-           (lambda-string-printo hypertag print-as)
+(defn sig-consto [signature name constant]
+  (l/fresh [type]
+           (l/membero [name type] (seq (:constants signature)))
            (l/== constant {:type type
-                           :print-as print-as})))
+                           :constant-name name})))
+
+(defn sig-lexo [signature hypertag constant]
+  (if (contains? signature :lex-typeo)
+    (l/fresh [type]
+             (hypertago hypertag)
+             ((:lex-typeo signature) hypertag type)
+             (l/== constant {:type type
+                             :hypertag hypertag}))
+    l/fail))
+
+(defn sigo [signature constant]
+  (l/conde [(l/fresh [name]
+                     (sig-consto signature name constant))]
+           [(l/fresh [hypertag]
+                     (sig-lexo signature hypertag constant))]))
 
 
+(defmacro with-sig-consts [signature & goals]
+  (let [consts (keys (:constants @(resolve signature)))]
+    `(l/fresh ~(vec consts)
+              ~@(for [const consts]
+                  `(sig-consto ~signature '~const ~const))
+              ~@goals)))
 
-(def string-principal-type 'Str)
-
-(def str-++ {:type '[-> Str [-> Str Str]]
-             :print-as '++
-             :string->lambda-string (rt (ll [x y]
-                                       (ll [t]
-                                           (x (y t)))))})
-
-(defn string-consto [constant]
-  (l/membero constant [str-++]))
-
-(defn string-typeo [hypertag type]
-  (l/== type 'Str))
-
-(def string-printo print-as-wordform)
-
-(defn string->lambda-string-lexo [hypertag string-constant lambda-string-term]
-  (l/fresh [lambda-string-constant]
-           (lambda-string-sigo hypertag lambda-string-term)))
-
-(def string->lambda-string (partial apply-lex :string->lambda-string))
-
-(defn string-sigo [hypertag constant]
-  (l/conde [(l/fresh [type print-as string->lambda-string]
-                     (hypertago hypertag)
-                     (string-typeo hypertag type)
-                     (string-printo hypertag print-as)
-                     (string->lambda-string-lexo hypertag constant string->lambda-string)
-                     (l/== constant {:type type
-                                     :print-as print-as
-                                     :string->lambda-string string->lambda-string}))]
-           [(l/== hypertag nil)
-            (string-consto constant)]))
+(defn translate-consts [translation-map]
+  (fn [constant translated-term]
+    (l/fresh [constant-name]
+             (l/featurec constant {:constant-name constant-name})
+             (l/membero [constant-name translated-term] (seq translation-map)))))
 
 
-(def unamb-syntax-principal-type 'S)
+(defn string->lambda-string-lexo [string-constant lambda-string-term]
+  (l/conde [(l/fresh [hypertag]
+                     (l/featurec string-constant {:hypertag hypertag})
+                     (sig-lexo lambda-string-sig hypertag lambda-string-term))]
+           [((translate-consts {'++ (rt (ll [x y t] (x (y t))))})
+             string-constant lambda-string-term)]))
 
-(defn unamb-syntax-typeo [hypertag type]
-  (l/conde [(retrievec hypertag {:head {:cat "n"}})
-            (l/== type 'N)]
-           [(retrievec hypertag {:head {:cat "adj"}})
-            (l/== type '[-> N N])]
-           [(retrievec hypertag {:head {:cat "det"}})
-            (l/== type '[-> N NP])]
-           [(retrievec hypertag {:head {:cat "v"
-                                        :trans "false"}})
-            (l/== type '[-> NP S])]))
+(defn unamb-syntax->string-lexo [unamb-syntax-constant string-term]
+  (with-sig-consts string-sig
+    (l/fresh [hypertag string-constant]
+             (l/featurec unamb-syntax-constant {:hypertag hypertag})
+             (sig-lexo string-sig hypertag string-constant)
+             (let [prefix (rt (ll [x] (++ string-constant x)))
+                   suffix (rt (ll [x] (++ x string-constant)))]
+               ((fs-match {{:head {:cat "n"}}       string-constant
+                           {:head {:cat "adj"
+                                   :order "right"}} suffix
+                           {:head {:cat "adj"
+                                   :order "left"}}  prefix
+                           {:head {:cat "det"}}     prefix
+                           {:head {:cat "v"
+                                   :trans "false"}} suffix})
+                hypertag string-term)))))
 
-(def unamb-syntax-printo print-as-wordform)
+(defn amb-syntax->unamb-syntax-lexo [amb-syntax-constant unamb-syntax-term]
+  (l/fresh [hypertag unamb-syntax-constant]
+           (l/featurec amb-syntax-constant {:hypertag hypertag})
+           (sig-lexo unamb-syntax-sig hypertag unamb-syntax-constant)
+           ((fs-match {{:head {:cat "n"}}       unamb-syntax-constant
+                       {:head {:cat "adj"}}     unamb-syntax-constant
+                       {:head {:cat "v"
+                               :trans "false"}} unamb-syntax-constant
+                       {:head {:cat "det"}}     unamb-syntax-constant})
+            hypertag unamb-syntax-term)))
 
-(defn unamb-syntax->string-lexo [hypertag unamb-syntax-constant string-term]
-  (l/fresh [string-constant]
-           (string-sigo hypertag string-constant)
-           (let [prefix (rt (ll [x] (str-++ string-constant x)))
-                 suffix (rt (ll [x] (str-++ x string-constant)))]
-             (l/conde [(retrievec hypertag {:head {:cat "n"}})
-                       (l/== string-term string-constant)]
-                      [(retrievec hypertag {:head {:cat "adj"
-                                                   :order "right"}})
-                       (l/== string-term suffix)]
-                      [(retrievec hypertag {:head {:cat "adj"
-                                                   :order "left"}})
-                       (l/== string-term prefix)]
-                      [(retrievec hypertag {:head {:cat "det"}})
-                       (l/== string-term prefix)]
-                      [(retrievec hypertag {:head {:cat "v"
-                                                   :trans "false"}})
-                       (l/== string-term suffix)]))))
+(defn amb-syntax->semantics-lexo [amb-syntax-constant semantics-term]
+  (with-sig-consts semantics-sig
+    (l/fresh [hypertag semantics-constant]
+             (l/featurec amb-syntax-constant {:hypertag hypertag})
+             (l/conde [(sig-lexo semantics-sig hypertag semantics-constant)
+                       ((fs-match {{:head {:cat "n"}}
+                                   ,semantics-constant
+                                   {:head {:cat "adj"}}
+                                   ,(rt (ll [n] (il [x] (and? (semantics-constant x)
+                                                              (n x)))))
+                                   {:head {:cat "v"
+                                           :trans "false"}}
+                                   ,(rt (ll [S]
+                                            (S (ll [x] (semantics-constant x)))))})
+                        hypertag semantics-term)]
+                      [((fs-match {{:head {:cat "det"
+                                           :det_type "indef"}}
+                                   ,(rt (ll [p q] (exists? (il [x] (and? (p x)
+                                                                         (q x))))))})
+                        hypertag semantics-term)]))))
 
-(def unamb-syntax->string (partial apply-lex :unamb-syntax->string))
-
-(defn unamb-syntax-sigo [hypertag constant]
-  (l/fresh [type print-as unamb-syntax->string]
-           (hypertago hypertag)
-           (unamb-syntax-typeo hypertag type)
-           (unamb-syntax-printo hypertag print-as)
-           (unamb-syntax->string-lexo hypertag constant unamb-syntax->string)
-           (l/== constant {:type type
-                           :unamb-syntax->string unamb-syntax->string
-                           :print-as print-as})))
-
-
-(def simple-semantics-principal-type 'T)
-
-(def sem-and? {:type '[-> T [-> T T]]
-               :print-as 'and?})
-(def sem-or? {:type '[-> T [-> T T]]
-              :print-as 'or?})
-(def sem-not? {:type '[-> T T]
-               :print-as 'not?})
-(def sem-imp? {:type '[-> T [-> T T]]
-               :print-as 'imp?})
-(def sem-top {:type 'T
-              :print-as true})
-(def sem-bot {:type 'T
-              :print-as false})
-(def sem-forall? {:type '[-> [=> E T] T]
-                  :print-as 'forall?})
-(def sem-exists? {:type '[-> [=> E T] T]
-                  :print-as 'exists?})
-
-(defn simple-semantics-consto [constant]
-  (l/membero constant [sem-and? sem-or? sem-not? sem-imp?
-                       sem-top sem-bot sem-forall? sem-exists?]))
-
-(defn simple-semantics-typeo [hypertag type]
-  (l/conde [(retrievec hypertag {:head {:cat "n"}})
-            (l/== type '[-> E T])]
-           [(retrievec hypertag {:head {:cat "adj"}})
-            (l/== type '[-> E T])]
-           [(retrievec hypertag {:head {:cat "v"
-                                        :trans "false"}})
-            (l/== type '[-> E T])]))
-
-(def simple-semantics-printo print-as-wordform)
-
-(defn simple-semantics-sigo [hypertag constant]
-  (l/conde [(l/fresh [type print-as]
-                     (hypertago hypertag)
-                     (simple-semantics-typeo hypertag type)
-                     (simple-semantics-printo hypertag print-as)
-                     (l/== constant {:type type
-                                     :print-as print-as}))]
-           [(l/== hypertag nil)
-            (simple-semantics-consto constant)]))
-
-
-
-(defn amb-syntax-typeo [hypertag type]
-  (l/conde [(retrievec hypertag {:head {:cat "n"}})
-            (l/== type 'N)]
-           [(retrievec hypertag {:head {:cat "adj"}})
-            (l/== type '[-> N N])]
-           [(retrievec hypertag {:head {:cat "v"
-                                        :trans "false"}})
-            (l/== type '[-> NP S])]
-           [(retrievec hypertag {:head {:cat "det"}})
-            (l/== type '[-> N NP])]))
-
-(def amb-syntax-printo print-as-wordform)
-
-(defn amb-syntax->unamb-syntax-lexo [hypertag amb-syntax-constant unamb-syntax-term]
-  (l/fresh [unamb-syntax-constant]
-           (unamb-syntax-sigo hypertag unamb-syntax-constant)
-           (l/conde [(retrievec hypertag {:head {:cat "n"}})
-                     (l/== unamb-syntax-term unamb-syntax-constant)]
-                    [(retrievec hypertag {:head {:cat "adj"}})
-                     (l/== unamb-syntax-term unamb-syntax-constant)]
-                    [(retrievec hypertag {:head {:cat "v"
-                                                 :trans "false"}})
-                     (l/== unamb-syntax-term unamb-syntax-constant)]
-                    [(retrievec hypertag {:head {:cat "det"}})
-                     (l/== unamb-syntax-term unamb-syntax-constant)])))
-
-(def amb-syntax->unamb-syntax (partial apply-lex :amb-syntax->unamb-syntax))
-
-(defn amb-syntax->simple-semantics-lexo [hypertag amb-syntax-constant simple-semantics-term]
-  (l/fresh [simple-semantics-constant]
-           (l/conde [(simple-semantics-sigo hypertag simple-semantics-constant)
-                     (l/conde [(retrievec hypertag {:head {:cat "n"}})
-                               (l/== simple-semantics-term simple-semantics-constant)]
-                              [(retrievec hypertag {:head {:cat "adj"}})
-                               (l/== simple-semantics-term (rt (ll [n] (il [x] (sem-and? (simple-semantics-constant x) (n x))))))]
-                              [(retrievec hypertag {:head {:cat "v"
-                                                           :trans "false"}})
-                               (l/== simple-semantics-term (rt (ll [S] (S (ll [x] (simple-semantics-constant x))))))])]
-                    [(retrievec hypertag {:head {:cat "det"
-                                                 :det_type "indef"}})
-                     (l/== simple-semantics-term (rt (ll [p q] (sem-exists? (il [x] (sem-and? (p x) (q x)))))))])))
-
-(def amb-syntax->simple-semantics (partial apply-lex :amb-syntax->simple-semantics))
-
-(defn amb-syntax-sigo [hypertag constant]
-  (l/fresh [type print-as amb-syntax->unamb-syntax amb-syntax->simple-semantics]
-           (hypertago hypertag)
-           (amb-syntax-typeo hypertag type)
-           (amb-syntax-printo hypertag print-as)
-           (amb-syntax->unamb-syntax-lexo hypertag constant amb-syntax->unamb-syntax)
-           (amb-syntax->simple-semantics-lexo hypertag constant amb-syntax->simple-semantics)
-           (l/== constant {:type type
-                           :print-as print-as
-                           :amb-syntax->unamb-syntax amb-syntax->unamb-syntax
-                           :amb-syntax->simple-semantics amb-syntax->simple-semantics})))
-
-
-
-(comment 
-  (binding [n/*reify-noms* false]
-    (def un-tag (nth (lexicon "un") 1))
-    (def homme-tag (first (lexicon "homme")))
-    (def vieux-tag (nth (lexicon "vieux") 1))
-    (def vive-tag (nth (lexicon "vive") 2))
-    (def un-abstract (first (l/run 1 [q] (amb-syntax-grammar un-tag q))))
-    (def homme-abstract (first (l/run 1 [q] (amb-syntax-grammar homme-tag q))))
-    (def vieux-abstract (first (l/run 1 [q] (amb-syntax-grammar vieux-tag q))))
-    (def vive-abstract (first (l/run 1 [q] (amb-syntax-grammar vive-tag q))))
-    (def sentence-abstract ['app vive-abstract ['app un-abstract ['app vieux-abstract homme-abstract]]])))
