@@ -131,36 +131,34 @@
                              [(list 'quote s) s]))]
     `(read-term '~term ~local-env)))
 
-(defn term-type [term]
-  (when (sequential? term)
-    (first term)))
-
-(def print-term-hierarchy (-> (make-hierarchy)
+(def present-term-hierarchy (-> (make-hierarchy)
                               (derive 'llam 'lam)
                               (derive 'ilam 'lam)))
 
-(defmulti print-term term-type :hierarchy #'print-term-hierarchy)
+(defmulti present-term first :hierarchy #'present-term-hierarchy)
 
-(defmethod print-term 'app [[app f a]]
+(defmethod present-term 'app [[app f a]]
   (if (= (term-type f) 'app)
-    (concat (print-term f) (list (print-term a)))
-    (list (print-term f) (print-term a))))
+    (concat (present-term f) (list (present-term a)))
+    (list (present-term f) (present-term a))))
 
-(defmethod print-term 'lam [[lam [v] body]]
+(defmethod present-term 'lam [[lam [v] body]]
   (let [written-lam ('{llam ll, ilam il} lam)
-        body (print-term body)]
-    (if (and (sequential? body) (= (first body) written-lam))
-      (let [[_ inner-vars body] body
+        p-body (present-term body)]
+    (if (= (first body) lam)
+      (let [[_ inner-vars body] p-body
             vars (vec (cons v inner-vars))]
-        (list written-lam vars body))
-      (list written-lam [v] body))))
+        (list written-lam vars p-body))
+      (list written-lam [v] p-body))))
 
-(defmethod print-term 'var [[var v]]
-  (if (and (map? v) (contains? v :print-as))
-    (get v :print-as)
+(defmethod present-term 'var [[var v]]
+  (if (map? v)
+    (cond (contains? v :hypertag) (first (get-in v [:hypertag :head :wordform]))
+          (contains? v :constant-name) (:constant-name v)
+          :else v)
     v))
 
-(def pt print-term)
+(def pt present-term)
 
 (defn drop-constraints [result]
   (if (and (seq? result) (= (second result) :-))
@@ -168,9 +166,9 @@
     result))
 
 (l/defne apply-lexo [lexo abs-term obj-term]
-  ([_ ['var abs-v] ['var obj-v]]
-     (l/conda [(lexo abs-v obj-v)]
-              [(l/== abs-v obj-v)]))
+  ([_ ['var abs-v] _]
+     (l/conda [(lexo abs-v obj-term)]
+              [(l/== abs-v obj-term)]))
   ([_ [lam [v] abs-b] [lam [v] obj-b]]
      (l/membero lam '[llam ilam])
      (apply-lexo lexo abs-b obj-b))
@@ -289,7 +287,7 @@
              (sig-lexo string-sig hypertag string-constant)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))]
-               ((fs-match {{:head {:cat "n"}}       string-constant
+               ((fs-match {{:head {:cat "n"}}       (rt string-constant)
                            {:head {:cat "adj"
                                    :order "right"}} suffix
                            {:head {:cat "adj"
@@ -303,11 +301,11 @@
   (l/fresh [hypertag unamb-syntax-constant]
            (l/featurec amb-syntax-constant {:hypertag hypertag})
            (sig-lexo unamb-syntax-sig hypertag unamb-syntax-constant)
-           ((fs-match {{:head {:cat "n"}}       unamb-syntax-constant
-                       {:head {:cat "adj"}}     unamb-syntax-constant
+           ((fs-match {{:head {:cat "n"}}       (rt unamb-syntax-constant)
+                       {:head {:cat "adj"}}     (rt unamb-syntax-constant)
                        {:head {:cat "v"
-                               :trans "false"}} unamb-syntax-constant
-                       {:head {:cat "det"}}     unamb-syntax-constant})
+                               :trans "false"}} (rt unamb-syntax-constant)
+                       {:head {:cat "det"}}     (rt unamb-syntax-constant)})
             hypertag unamb-syntax-term)))
 
 (defn amb-syntax->semantics-lexo [amb-syntax-constant semantics-term]
@@ -316,7 +314,7 @@
              (l/featurec amb-syntax-constant {:hypertag hypertag})
              (l/conde [(sig-lexo semantics-sig hypertag semantics-constant)
                        ((fs-match {{:head {:cat "n"}}
-                                   ,semantics-constant
+                                   ,(rt semantics-constant)
                                    {:head {:cat "adj"}}
                                    ,(rt (ll [n] (il [x] (and? (semantics-constant x)
                                                               (n x)))))
