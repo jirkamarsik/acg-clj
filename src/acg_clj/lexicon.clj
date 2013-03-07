@@ -146,7 +146,7 @@
   (let [written-lam ('{llam ll, ilam il} lam)
         p-body (present-term body)]
     (if (= (first body) lam)
-      (let [[_ inner-vars body] p-body
+      (let [[_ inner-vars p-body] p-body
             vars (vec (cons v inner-vars))]
         (list written-lam vars p-body))
       (list written-lam [v] p-body))))
