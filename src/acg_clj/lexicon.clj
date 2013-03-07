@@ -181,7 +181,6 @@
            (lexicono wordform hypertag)))
 
 
-
 (defn unityped [unitype]
   (fn [hypertag type]
     (l/== type unitype)))
@@ -194,6 +193,54 @@
                   (l/== ~out-sym ~val)])]
     `(fn [~hypertag-sym ~out-sym]
        (l/conde ~@goals))))
+
+(defn sig-consto [signature name constant]
+  (l/fresh [type]
+           (l/membero [name type] (seq (:constants signature)))
+           (l/== constant {:type type
+                           :constant-name name})))
+
+(defn sig-lexo [signature hypertag constant]
+  (if (contains? signature :lex-typeo)
+    (l/fresh [type]
+             (hypertago hypertag)
+             ((:lex-typeo signature) hypertag type)
+             (l/== constant {:type type
+                             :hypertag hypertag}))
+    l/fail))
+
+(defn sigo [signature constant]
+  (l/conde [(l/fresh [name]
+                     (sig-consto signature name constant))]
+           [(l/fresh [hypertag]
+                     (sig-lexo signature hypertag constant))]))
+
+;; WARNING: Too demanding to run l/run*.
+(defn sig-termo [signature term type]
+  (let [consts (l/run* [q] (sigo signature q))]
+    (typeo (for [const consts] [const :i])
+           (for [const consts] [const (:type const)])
+           []
+           term
+           type)))
+
+(defn sig-sento [signature sentence]
+  (sig-termo signature sentence (:principal-type signature)))
+
+(defmacro with-sig-consts [signature & goals]
+  (let [consts (keys (:constants @(resolve signature)))]
+    `(l/fresh ~(vec consts)
+              ~@(for [const consts]
+                  `(sig-consto ~signature '~const ~const))
+              ~@goals)))
+
+(defn translate-consts [translation-map]
+  (fn [constant translated-term]
+    (l/fresh [constant-name]
+             (l/featurec constant {:constant-name constant-name})
+             (l/membero [constant-name translated-term] (seq translation-map)))))
+
+
 
 
 (def lambda-string-sig
@@ -236,41 +283,6 @@
                                  :trans "false"}} '[-> NP S]
                          {:head {:cat "det"}}     '[-> N NP]})})
 
-
-(defn sig-consto [signature name constant]
-  (l/fresh [type]
-           (l/membero [name type] (seq (:constants signature)))
-           (l/== constant {:type type
-                           :constant-name name})))
-
-(defn sig-lexo [signature hypertag constant]
-  (if (contains? signature :lex-typeo)
-    (l/fresh [type]
-             (hypertago hypertag)
-             ((:lex-typeo signature) hypertag type)
-             (l/== constant {:type type
-                             :hypertag hypertag}))
-    l/fail))
-
-(defn sigo [signature constant]
-  (l/conde [(l/fresh [name]
-                     (sig-consto signature name constant))]
-           [(l/fresh [hypertag]
-                     (sig-lexo signature hypertag constant))]))
-
-
-(defmacro with-sig-consts [signature & goals]
-  (let [consts (keys (:constants @(resolve signature)))]
-    `(l/fresh ~(vec consts)
-              ~@(for [const consts]
-                  `(sig-consto ~signature '~const ~const))
-              ~@goals)))
-
-(defn translate-consts [translation-map]
-  (fn [constant translated-term]
-    (l/fresh [constant-name]
-             (l/featurec constant {:constant-name constant-name})
-             (l/membero [constant-name translated-term] (seq translation-map)))))
 
 
 (defn string->lambda-string-lexo [string-constant lambda-string-term]
