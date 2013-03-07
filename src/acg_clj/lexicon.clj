@@ -39,11 +39,11 @@
   (read-lexicon sample-lines))
 
 
-#_(defonce lexicon
+(defonce lexicon
   (with-open [lex-rdr (io/reader lex-dump)]
     (read-lexicon (line-seq lex-rdr))))
 
-(defonce lexicon
+#_(defonce lexicon
   sample-lexicon)
 
 
@@ -138,7 +138,7 @@
 (defmulti present-term first :hierarchy #'present-term-hierarchy)
 
 (defmethod present-term 'app [[app f a]]
-  (if (= (term-type f) 'app)
+  (if (= (first f) 'app)
     (concat (present-term f) (list (present-term a)))
     (list (present-term f) (present-term a))))
 
@@ -243,7 +243,7 @@
 
 
 
-(def lambda-string-sig
+(def l-string-sig
   {:principal-type '[-> Sigma Sigma]
    :lex-typeo (unityped '[-> Sigma Sigma])})
 
@@ -252,7 +252,7 @@
    :constants '{++ [-> Str [-> Str Str]]}
    :lex-typeo (unityped 'Str)})
 
-(def unamb-syntax-sig
+(def ua-stx-sig
   {:principal-type 'S
    :lex-typeo (fs-match {{:head {:cat "n"}}       'N
                          {:head {:cat "adj"}}     '[-> N N]
@@ -260,7 +260,7 @@
                          {:head {:cat "v"
                                  :trans "false"}} '[-> NP S]})})
 
-(def semantics-sig
+(def sim-sem-sig
   {:principal-type 'T
    :constants '{and?    [-> T [-> T T]]
                 or?     [-> T [-> T T]]
@@ -275,7 +275,7 @@
                          {:head {:cat "v"
                                  :trans "false"}} '[-> E T]})})
 
-(def amb-syntax-sig
+(def a-stx-sig
   {:principal-type 'S
    :lex-typeo (fs-match {{:head {:cat "n"}}       'N
                          {:head {:cat "adj"}}     '[-> N N]
@@ -285,17 +285,17 @@
 
 
 
-(defn string->lambda-string-lexo [string-constant lambda-string-term]
+(defn string->l-string-lexo [string-constant l-string-term]
   (l/conde [(l/fresh [hypertag]
                      (l/featurec string-constant {:hypertag hypertag})
-                     (sig-lexo lambda-string-sig hypertag lambda-string-term))]
+                     (sig-lexo l-string-sig hypertag l-string-term))]
            [((translate-consts {'++ (rt (ll [x y t] (x (y t))))})
-             string-constant lambda-string-term)]))
+             string-constant l-string-term)]))
 
-(defn unamb-syntax->string-lexo [unamb-syntax-constant string-term]
+(defn ua-stx->string-lexo [ua-stx-constant string-term]
   (with-sig-consts string-sig
     (l/fresh [hypertag string-constant]
-             (l/featurec unamb-syntax-constant {:hypertag hypertag})
+             (l/featurec ua-stx-constant {:hypertag hypertag})
              (sig-lexo string-sig hypertag string-constant)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))]
@@ -309,35 +309,43 @@
                                    :trans "false"}} suffix})
                 hypertag string-term)))))
 
-(defn amb-syntax->unamb-syntax-lexo [amb-syntax-constant unamb-syntax-term]
-  (l/fresh [hypertag unamb-syntax-constant]
-           (l/featurec amb-syntax-constant {:hypertag hypertag})
-           (sig-lexo unamb-syntax-sig hypertag unamb-syntax-constant)
-           ((fs-match {{:head {:cat "n"}}       (rt unamb-syntax-constant)
-                       {:head {:cat "adj"}}     (rt unamb-syntax-constant)
+(defn a-stx->ua-stx-lexo [a-stx-constant ua-stx-term]
+  (l/fresh [hypertag ua-stx-constant]
+           (l/featurec a-stx-constant {:hypertag hypertag})
+           (sig-lexo ua-stx-sig hypertag ua-stx-constant)
+           ((fs-match {{:head {:cat "n"}}       (rt ua-stx-constant)
+                       {:head {:cat "adj"}}     (rt ua-stx-constant)
                        {:head {:cat "v"
-                               :trans "false"}} (rt unamb-syntax-constant)
-                       {:head {:cat "det"}}     (rt unamb-syntax-constant)})
-            hypertag unamb-syntax-term)))
+                               :trans "false"}} (rt ua-stx-constant)
+                       {:head {:cat "det"}}     (rt ua-stx-constant)})
+            hypertag ua-stx-term)))
 
-(defn amb-syntax->semantics-lexo [amb-syntax-constant semantics-term]
-  (with-sig-consts semantics-sig
-    (l/fresh [hypertag semantics-constant]
-             (l/featurec amb-syntax-constant {:hypertag hypertag})
-             (l/conde [(sig-lexo semantics-sig hypertag semantics-constant)
+(defn a-stx->sim-sem-lexo [a-stx-constant sim-sem-term]
+  (with-sig-consts sim-sem-sig
+    (l/fresh [hypertag sim-sem-constant]
+             (l/featurec a-stx-constant {:hypertag hypertag})
+             (l/conde [(sig-lexo sim-sem-sig hypertag sim-sem-constant)
                        ((fs-match {{:head {:cat "n"}}
-                                   ,(rt semantics-constant)
+                                   ,(rt sim-sem-constant)
                                    {:head {:cat "adj"}}
-                                   ,(rt (ll [n] (il [x] (and? (semantics-constant x)
+                                   ,(rt (ll [n] (il [x] (and? (sim-sem-constant x)
                                                               (n x)))))
                                    {:head {:cat "v"
                                            :trans "false"}}
                                    ,(rt (ll [S]
-                                            (S (ll [x] (semantics-constant x)))))})
-                        hypertag semantics-term)]
+                                            (S (ll [x] (sim-sem-constant x)))))})
+                        hypertag sim-sem-term)]
                       [((fs-match {{:head {:cat "det"
                                            :det_type "indef"}}
                                    ,(rt (ll [p q] (exists? (il [x] (and? (p x)
                                                                          (q x))))))})
-                        hypertag semantics-term)]))))
+                        hypertag sim-sem-term)]))))
+
+
+
+(defn sig-findo [signature wordform constant type]
+  (l/fresh [hypertag]
+           (lexicono wordform hypertag)
+           (sig-lexo signature hypertag constant)
+           (l/featurec constant {:type type})))
 
