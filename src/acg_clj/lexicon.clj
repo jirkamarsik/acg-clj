@@ -349,3 +349,8 @@
            (sig-lexo signature hypertag constant)
            (l/featurec constant {:type type})))
 
+(defn sig-findo' [signature wordform constant]
+  (l/fresh [hypertag]
+           (lexicono wordform hypertag)
+           (sig-lexo signature hypertag constant)))
+
