@@ -285,9 +285,10 @@
 
 
 (defn string->l-string-lexo [string-constant l-string-term]
-  (l/conde [(l/fresh [hypertag]
+  (l/conde [(l/fresh [hypertag l-string-constant]
                      (l/featurec string-constant {:hypertag hypertag})
-                     (sig-lexo l-string-sig hypertag l-string-term))]
+                     (sig-lexo l-string-sig hypertag l-string-constant)
+                     (l/== l-string-term (rt l-string-constant)))]
            [((translate-consts {'++ (rt (ll [x y t] (x (y t))))})
              string-constant l-string-term)]))
 
