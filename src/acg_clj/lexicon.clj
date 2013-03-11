@@ -167,8 +167,7 @@
 
 (l/defne apply-lexo [lexo abs-term obj-term]
   ([_ ['var abs-v] _]
-     (l/conda [(lexo abs-v obj-term)]
-              [(l/== abs-v obj-term)]))
+     (lexo abs-v obj-term))
   ([_ [lam [v] abs-b] [lam [v] obj-b]]
      (l/membero lam '[llam ilam])
      (apply-lexo lexo abs-b obj-b))
