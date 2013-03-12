@@ -1,10 +1,11 @@
 (ns acg-clj.acg
   "Relations implementing the notions of abstract categorial
-  grammars (signatures and lexicons). "
+  grammars (signatures and lexicons)."
   (:require [clojure.core.logic :as l])
   (:use (acg-clj lambda
                  lexicon
-                 utils)))
+                 utils)
+        plumbing.core))
 
 (defn sig-consto
   "Given a signature, this relation ensures that `constant' is an
@@ -21,8 +22,8 @@
   (if (contains? signature :lex-typespeco)
     (l/fresh [wordform hypertag type spec]
              (l/== constant {:type type
-                             :id {:wordform wordform
-                                  :hypertag hypertag
+                             :id {:lex-entry {:wordform wordform
+                                              :hypertag hypertag}
                                   :spec spec}})
              (lexicono wordform hypertag)
              ((:lex-typespeco signature) hypertag type spec))
@@ -35,8 +36,8 @@
 
 '{:type _
   :id [{:constant-name _}
-       {:wordform _
-        :hypertag _
+       {:lex-entry {:wordform _
+                    :hypertag _}
         :spec _}]}
 
 (defn has-typeo [constant type]
@@ -54,26 +55,29 @@
            (has-ido constant id)
            (l/== id {:constant-name name})))
 
-(defn has-wordformo [constant wordform]
-  (l/fresh [id hypertag spec]
+(defn has-lex-entryo [constant lex-entry]
+  (l/fresh [id spec]
            (has-ido constant id)
-           (l/== id {:wordform wordform
-                     :hypertag hypertag
-                     :spec spec})))
-
-(defn has-hypertago [constant hypertag]
-  (l/fresh [id wordform spec]
-           (has-ido constant id)
-           (l/== id {:wordform wordform
-                     :hypertag hypertag
+           (l/== id {:lex-entry lex-entry
                      :spec spec})))
 
 (defn has-speco [constant spec]
-  (l/fresh [id wordform hypertag]
+  (l/fresh [id lex-entry]
            (has-ido constant id)
-           (l/== id {:wordform wordform
-                     :hypertag hypertag
+           (l/== id {:lex-entry lex-entry
                      :spec spec})))
+
+(defn has-wordformo [constant wordform]
+  (l/fresh [lex-entry hypertag]
+           (has-lex-entryo constant lex-entry)
+           (l/== lex-entry {:wordform wordform
+                            :hypertag hypertag})))
+
+(defn has-hypertago [constant hypertag]
+  (l/fresh [lex-entry wordform]
+           (has-lex-entryo constant lex-entry)
+           (l/== lex-entry {:wordform wordform
+                            :hypertag hypertag})))
 
 
 (defn has-cato [constant cat]
@@ -81,6 +85,12 @@
            (has-hypertago constant hypertag)
            (rfeaturec hypertag {:head {:cat cats}})
            (l/membero cat cats)))
+
+
+(defn share-lex-entryo [constant-a constant-b]
+  (l/fresh [lex-entry]
+           (has-lex-entryo constant-a)
+           (has-lex-entryo constant-b)))
 
 
 ;; TODO: This should know the difference between constants, which need
@@ -112,15 +122,13 @@
 
 
 (defn sig-findo [signature wordform constant type]
-  (l/fresh [hypertag]
-           (lexicono wordform hypertag)
-           (sig-lexo signature hypertag constant)
-           (l/featurec constant {:type type})))
+  (l/all (has-wordformo constant wordform)
+         (has-typeo constant type)
+         (sig-lexo signature constant)))
 
 (defn sig-findo' [signature wordform constant]
-  (l/fresh [hypertag]
-           (lexicono wordform hypertag)
-           (sig-lexo signature hypertag constant)))
+  (l/all (has-wordformo constant wordform)
+         (sig-lexo signature constant)))
 
 
 (defn unityped [unitype]
@@ -128,15 +136,23 @@
     (l/all (l/== type unitype)
            (l/== spec nil))))
 
-(defmacro fs-match [patterns]
-  (let [hypertag-sym (gensym "hypertag")
-        out-sym (gensym "out")
-        goals (for [[pat val] patterns]
-                `[(retrievec ~hypertag-sym ~pat)
-                  (l/== ~out-sym ~val)])]
-    `(fn [~hypertag-sym ~out-sym spec#]
-       (l/all (l/conde ~@goals)
-              (l/== spec# nil)))))
+(defn fs-matche
+  ([fs]
+     l/fail)
+  ([fs [pattern & goals] & clauses]
+     (l/conde [(retrievec fs pattern)
+               (apply andg goals)]
+              [(apply fs-matche fs clauses)])))
+
+(defn fs-assigne [fs target & pattern-value-pairs]
+  (apply fs-matche fs
+         (for [[pattern value] (partition 2 pattern-value-pairs)]
+           [pattern (l/== target value)])))
+
+(defn ht->type-mapper [patterns]
+  (fn [hypertag type spec]
+    (l/all (apply fs-assigne hypertag type (mapcat identity patterns))
+           (l/== spec nil))))
 
 (defmacro with-sig-consts [signature & goals]
   (let [consts (keys (:constants @(resolve signature)))]

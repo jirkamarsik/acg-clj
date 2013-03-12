@@ -50,3 +50,21 @@
   (if (and (seq? result) (= (second result) :-))
     (first result)
     result))
+
+(defn org
+  "Conde as a function. Takes any number of goals and returns a goal
+  which is their disjunction."
+  ([]
+     l/fail)
+  ([goal & goals]
+     (l/conde [goal]
+              [(apply org goals)])))
+
+(defn andg
+  "All as a function."
+  ([]
+     l/succeed)
+  ([goal & goals]
+     (l/all goal
+            (apply andg goals))))
+
