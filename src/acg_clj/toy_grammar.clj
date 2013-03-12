@@ -70,7 +70,7 @@
                             (share-lex-entryo string-constant l-string-constant)
                             (sig-lexo l-string-sig l-string-constant)
                             (l/== l-string-term (rt l-string-constant)))]
-                  [((translate-consts {'++ (rt (ll [x y t] (x (y t))))})
+                  [((const-lexicon {'++ (rt (ll [x y t] (x (y t))))})
                     string-constant l-string-term)])))
 
 (defn ua-stx->string-lexo

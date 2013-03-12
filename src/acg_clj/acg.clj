@@ -121,13 +121,13 @@
   (sig-termo signature sentence (:principal-type signature)))
 
 
-(defn sig-findo [signature wordform constant type]
+(defn sig-findo [signature wordform constant]
   (l/all (has-wordformo constant wordform)
-         (has-typeo constant type)
          (sig-lexo signature constant)))
 
-(defn sig-findo' [signature wordform constant]
+(defn sig-findo' [signature wordform constant type]
   (l/all (has-wordformo constant wordform)
+         (has-typeo constant type)
          (sig-lexo signature constant)))
 
 
@@ -162,7 +162,7 @@
                           (sig-consto ~signature ~const)))
               ~@goals)))
 
-(defn translate-consts [translation-map]
+(defn const-lexicon [translation-map]
   (fn [constant translated-term]
     (l/fresh [constant-name]
              (has-nameo constant constant-name)
