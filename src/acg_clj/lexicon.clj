@@ -4,7 +4,8 @@
             [clojure.core.logic :as l]
             [clojure.core.logic.nominal :as n])
   (:use plumbing.core
-        acg-clj.core))
+        acg-clj.core
+        [acg-clj.termix :only [rt pt ptn ptnt]]))
 
 (defn parse-hypertag [hypertag-text]
   (reduce (partial apply assoc-in)
@@ -71,6 +72,7 @@
                                    (l/membero hypertag hypertags))))))
 
 
+;; From clojure.core.logic JIRA
 (defn rfeaturec [m f]
   (let [new-f (reduce (fn [m [k v]] (assoc m k (l/lvar (name k)))) {} (seq f))]
     (l/all
@@ -98,67 +100,6 @@
            (l/everyg (fn [[lvar val]]
                        (l/membero val lvar))
                      @lvar-value-pairs))))
-
-(defmulti read-term (fn [term env]
-                       (if (sequential? term)
-                         (if ('#{ll il} (first term))
-                           :lam
-                           :app)
-                         :var)))
-
-(defmethod read-term :lam [[lam [v & vs :as vars] body] env]
-  (if (empty? vars)
-    (read-term body env)
-    (let [new-env (assoc env v v)
-          emitted-lam ('{ll llam, il ilam} lam)]
-      [emitted-lam [v] (read-term (list lam vs body) new-env)])))
-
-(defmethod read-term :app [term env]
-  (reduce (fn [f a]
-            ['app f a])
-          (map #(read-term % env) term)))
-
-(defmethod read-term :var [term env]
-  (let [maybe-resolved (and (symbol? term) (resolve term))
-        term (cond (contains? env term) (get env term)
-                   (var? maybe-resolved) (deref maybe-resolved)
-                   (class? maybe-resolved) maybe-resolved
-                   :else term)]
-    ['var term]))
-
-(defmacro rt [term]
-  (let [local-env (into {} (for [s (keys &env)]
-                             [(list 'quote s) s]))]
-    `(read-term '~term ~local-env)))
-
-(def present-term-hierarchy (-> (make-hierarchy)
-                              (derive 'llam 'lam)
-                              (derive 'ilam 'lam)))
-
-(defmulti present-term first :hierarchy #'present-term-hierarchy)
-
-(defmethod present-term 'app [[app f a]]
-  (if (= (first f) 'app)
-    (concat (present-term f) (list (present-term a)))
-    (list (present-term f) (present-term a))))
-
-(defmethod present-term 'lam [[lam [v] body]]
-  (let [written-lam ('{llam ll, ilam il} lam)
-        p-body (present-term body)]
-    (if (= (first body) lam)
-      (let [[_ inner-vars p-body] p-body
-            vars (vec (cons v inner-vars))]
-        (list written-lam vars p-body))
-      (list written-lam [v] p-body))))
-
-(defmethod present-term 'var [[var v]]
-  (if (map? v)
-    (cond (contains? v :hypertag) (first (get-in v [:hypertag :head :wordform]))
-          (contains? v :constant-name) (:constant-name v)
-          :else v)
-    v))
-
-(def pt present-term)
 
 (defn drop-constraints [result]
   (if (and (seq? result) (= (second result) :-))
