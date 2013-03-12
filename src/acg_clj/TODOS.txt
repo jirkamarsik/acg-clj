@@ -1,0 +1,9 @@
+* Make a distinction between variables and constants.
+  * First in read-term, then use that to fix apply-lexo and finally
+    update typeo.
+
+* How to formulate the type inferencer so common use cases are sane?
+  * Ensure consistency of `c' with `ic' and `lc'.
+  * Make sig-termo work well with the type inferencer.
+
+* Handle the optional features on hypertags.
