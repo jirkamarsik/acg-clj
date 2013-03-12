@@ -10,14 +10,14 @@
   '[-> Sigma Sigma]. String concatenation is performed by function
   composition."
   {:principal-type '[-> Sigma Sigma]
-   :lex-typespeco (unityped '[-> Sigma Sigma])})
+   :lex-typespeco (unityper '[-> Sigma Sigma])})
 
 (def string-sig
   "A signature of the algebra of strings with a binary concatenation
   operator."
   {:principal-type 'Str
    :constants '{++ [-> Str [-> Str Str]]}
-   :lex-typespeco (unityped 'Str)})
+   :lex-typespeco (unityper 'Str)})
 
 (def ua-stx-sig
   "A signature of syntactic descriptions. On this level, the so-called

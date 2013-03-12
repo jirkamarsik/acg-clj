@@ -131,7 +131,7 @@
          (sig-lexo signature constant)))
 
 
-(defn unityped [unitype]
+(defn unityper [unitype]
   (fn [hypertag type spec]
     (l/all (l/== type unitype)
            (l/== spec nil))))
