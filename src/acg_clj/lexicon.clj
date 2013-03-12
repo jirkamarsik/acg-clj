@@ -29,8 +29,7 @@
            (for [line lex-lines]
              (let [[wordform lemma hypertag] (string/split line #"\t")
                    hypertag (parse-hypertag hypertag)
-                   hypertag (assoc-in hypertag [:head :lemma] [lemma])
-                   hypertag (assoc-in hypertag [:head :wordform] [wordform])]
+                   hypertag (assoc-in hypertag [:head :lemma] [lemma])]
                [wordform hypertag])))))
 
 (def lex-dump
@@ -62,24 +61,10 @@
   valid hypertag for the wordform `wordform'. Tries to be as efficient
   as possible given the groundedness of its arguments."
   [wordform hypertag]
-  (l/project [wordform hypertag]
-             (if (and (l/lvar? wordform)
-                      (map? hypertag)
-                      (map? (:head hypertag))
-                      (coll? (:wordform (:head hypertag))))
-               (l/membero wordform (:wordform (:head hypertag)))
-               l/succeed)
-             (l/project [wordform]
-                        (if (string? wordform)
-                          (l/membero hypertag (lexicon wordform))
-                          (l/fresh [hypertags]
-                                   (membero! [wordform hypertags] lexicon)
-                                   (l/membero hypertag hypertags))))))
-
-(defn hypertago
-  "Is `hypertag' a valid hypertag in our lexicon. A shortcut for
-  lexicono."
-  [hypertag]
-  (l/fresh [wordform]
-           (lexicono wordform hypertag)))
+  (l/project [wordform]
+             (if (string? wordform)
+               (l/membero hypertag (lexicon wordform))
+               (l/fresh [hypertags]
+                        (membero! [wordform hypertags] lexicon)
+                        (l/membero hypertag hypertags)))))
 

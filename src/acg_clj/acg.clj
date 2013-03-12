@@ -19,11 +19,12 @@
   ""
   [signature constant]
   (if (contains? signature :lex-typespeco)
-    (l/fresh [hypertag type spec]
+    (l/fresh [wordform hypertag type spec]
              (l/== constant {:type type
-                             :id {:hypertag hypertag
+                             :id {:wordform wordform
+                                  :hypertag hypertag
                                   :spec spec}})
-             (hypertago hypertag)
+             (lexicono wordform hypertag)
              ((:lex-typespeco signature) hypertag type spec))
     l/fail))
 
@@ -34,9 +35,8 @@
 
 '{:type _
   :id [{:constant-name _}
-       {:hypertag {:head {:cat _
-                          :lemma _
-                          :wordform _}}
+       {:wordform _
+        :hypertag _
         :spec _}]}
 
 (defn has-typeo [constant type]
@@ -54,22 +54,27 @@
            (has-ido constant id)
            (l/== id {:constant-name name})))
 
-(defn has-hypertago [constant hypertag]
-  (l/fresh [id spec]
+(defn has-wordformo [constant wordform]
+  (l/fresh [id hypertag spec]
            (has-ido constant id)
-           (l/== id {:hypertag hypertag
+           (l/== id {:wordform wordform
+                     :hypertag hypertag
+                     :spec spec})))
+
+(defn has-hypertago [constant hypertag]
+  (l/fresh [id wordform spec]
+           (has-ido constant id)
+           (l/== id {:wordform wordform
+                     :hypertag hypertag
                      :spec spec})))
 
 (defn has-speco [constant spec]
-  (l/fresh [id hypertag]
+  (l/fresh [id wordform hypertag]
            (has-ido constant id)
-           (l/== id {:hypertag hypertag
+           (l/== id {:wordform wordform
+                     :hypertag hypertag
                      :spec spec})))
 
-(defn has-wordformo [constant wordform]
-  (l/fresh [hypertag]
-           (has-hypertago constant hypertag)
-           (lexicono wordform hypertag)))
 
 (defn has-cato [constant cat]
   (l/fresh [hypertag cats]
@@ -120,8 +125,7 @@
 
 (defn unityped [unitype]
   (fn [hypertag type spec]
-    (l/all (hypertago hypertag)
-           (l/== type unitype)
+    (l/all (l/== type unitype)
            (l/== spec nil))))
 
 (defmacro fs-match [patterns]
@@ -131,19 +135,19 @@
                 `[(retrievec ~hypertag-sym ~pat)
                   (l/== ~out-sym ~val)])]
     `(fn [~hypertag-sym ~out-sym spec#]
-       (l/all (hypertago ~hypertag-sym)
-              (l/== spec# nil)
-              (l/conde ~@goals)))))
+       (l/all (l/conde ~@goals)
+              (l/== spec# nil)))))
 
 (defmacro with-sig-consts [signature & goals]
   (let [consts (keys (:constants @(resolve signature)))]
     `(l/fresh ~(vec consts)
               ~@(for [const consts]
-                  `(sig-consto ~signature '~const ~const))
+                  `(l/all (has-nameo ~const '~const)
+                          (sig-consto ~signature ~const)))
               ~@goals)))
 
 (defn translate-consts [translation-map]
   (fn [constant translated-term]
     (l/fresh [constant-name]
-             (l/featurec constant {:constant-name constant-name})
+             (has-nameo constant constant-name)
              (l/membero [constant-name translated-term] (seq translation-map)))))
