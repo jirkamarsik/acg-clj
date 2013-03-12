@@ -61,7 +61,8 @@
               [(apply org goals)])))
 
 (defn andg
-  "All as a function."
+  "All as a function. Takes any number of goals and returns a goal
+  which is their conjunction."
   ([]
      l/succeed)
   ([goal & goals]
