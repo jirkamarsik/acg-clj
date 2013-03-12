@@ -6,27 +6,76 @@
                  lexicon
                  utils)))
 
-(defn sig-consto [signature name constant]
-  (l/fresh [type]
-           (l/membero [name type] (seq (:constants signature)))
+(defn sig-consto
+  "Given a signature, this relation ensures that `constant' is an
+  extra-lexical (explicitly declared) constant of the signature."
+  [signature constant]
+  (l/fresh [name type]
            (l/== constant {:type type
-                           :constant-name name})))
+                           :id {:constant-name name}})
+           (l/membero [name type] (seq (:constants signature)))))
 
-(defn sig-lexo [signature hypertag constant]
-  (if (contains? signature :lex-typeo)
-    (l/fresh [type spec]
-             (hypertago hypertag)
-             ((:lex-typeo signature) hypertag type spec)
+(defn sig-lexo
+  ""
+  [signature constant]
+  (if (contains? signature :lex-typespeco)
+    (l/fresh [hypertag type spec]
              (l/== constant {:type type
-                             :hypertag hypertag
-                             :spec spec}))
+                             :id {:hypertag hypertag
+                                  :spec spec}})
+             (hypertago hypertag)
+             ((:lex-typespeco signature) hypertag type spec))
     l/fail))
 
 (defn sigo [signature constant]
-  (l/conde [(l/fresh [name]
-                     (sig-consto signature name constant))]
-           [(l/fresh [hypertag]
-                     (sig-lexo signature hypertag constant))]))
+  (l/conde [(sig-consto signature constant)]
+           [(sig-lexo signature constant)]))
+
+
+'{:type _
+  :id [{:constant-name _}
+       {:hypertag {:head {:cat _
+                          :lemma _
+                          :wordform _}}
+        :spec _}]}
+
+(defn has-typeo [constant type]
+  (l/fresh [id]
+           (l/== constant {:type type
+                           :id id})))
+
+(defn has-ido [constant id]
+  (l/fresh [type]
+           (l/== constant {:type type
+                           :id id})))
+
+(defn has-nameo [constant name]
+  (l/fresh [id]
+           (has-ido constant id)
+           (l/== id {:constant-name name})))
+
+(defn has-hypertago [constant hypertag]
+  (l/fresh [id spec]
+           (has-ido constant id)
+           (l/== id {:hypertag hypertag
+                     :spec spec})))
+
+(defn has-speco [constant spec]
+  (l/fresh [id hypertag]
+           (has-ido constant id)
+           (l/== id {:hypertag hypertag
+                     :spec spec})))
+
+(defn has-wordformo [constant wordform]
+  (l/fresh [hypertag]
+           (has-hypertago constant hypertag)
+           (lexicono wordform hypertag)))
+
+(defn has-cato [constant cat]
+  (l/fresh [hypertag cats]
+           (has-hypertago constant hypertag)
+           (rfeaturec hypertag {:head {:cat cats}})
+           (l/membero cat cats)))
 
 
 ;; TODO: This should know the difference between constants, which need
@@ -43,6 +92,7 @@
 
 
 ;; WARNING: Too demanding to run l/run*.
+;; TODO: Find a better way to do this.
 (defn sig-termo [signature term type]
   (let [consts (l/run* [q] (sigo signature q))]
     (typeo (for [const consts] [const :i])
@@ -51,6 +101,7 @@
            term
            type)))
 
+;; WARNING: Same problems as sig-termo.
 (defn sig-sento [signature sentence]
   (sig-termo signature sentence (:principal-type signature)))
 
@@ -80,8 +131,9 @@
                 `[(retrievec ~hypertag-sym ~pat)
                   (l/== ~out-sym ~val)])]
     `(fn [~hypertag-sym ~out-sym spec#]
-       (l/all (l/conde ~@goals)
-              (l/== spec# nil)))))
+       (l/all (hypertago ~hypertag-sym)
+              (l/== spec# nil)
+              (l/conde ~@goals)))))
 
 (defmacro with-sig-consts [signature & goals]
   (let [consts (keys (:constants @(resolve signature)))]

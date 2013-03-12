@@ -10,25 +10,25 @@
   '[-> Sigma Sigma]. String concatenation is performed by function
   composition."
   {:principal-type '[-> Sigma Sigma]
-   :lex-typeo (unityped '[-> Sigma Sigma])})
+   :lex-typespeco (unityped '[-> Sigma Sigma])})
 
 (def string-sig
   "A signature of the algebra of strings with a binary concatenation
   operator."
   {:principal-type 'Str
    :constants '{++ [-> Str [-> Str Str]]}
-   :lex-typeo (unityped 'Str)})
+   :lex-typespeco (unityped 'Str)})
 
 (def ua-stx-sig
   "A signature of syntactic descriptions. On this level, the so-called
   scope ambiguities are not reflected by ambiguities in the
   syntax (\"unambiguous syntax\")."
   {:principal-type 'S
-   :lex-typeo (fs-match {{:head {:cat "n"}}       'N
-                         {:head {:cat "adj"}}     '[-> N N]
-                         {:head {:cat "det"}}     '[-> N NP]
-                         {:head {:cat "v"
-                                 :trans "false"}} '[-> NP S]})})
+   :lex-typespeco (fs-match {{:head {:cat "n"}}       'N
+                             {:head {:cat "adj"}}     '[-> N N]
+                             {:head {:cat "det"}}     '[-> N NP]
+                             {:head {:cat "v"
+                                     :trans "false"}} '[-> NP S]})})
 
 (def sim-sem-sig
   "A signature for simple semantic representations. Contains the usual
@@ -42,10 +42,10 @@
                 bottom  T
                 forall? [-> [=> E T] T]
                 exists? [-> [=> E T] T]}
-   :lex-typeo (fs-match {{:head {:cat "n"}}       '[-> E T]
-                         {:head {:cat "adj"}}     '[-> E T]
-                         {:head {:cat "v"
-                                 :trans "false"}} '[-> E T]})})
+   :lex-typespeco (fs-match {{:head {:cat "n"}}       '[-> E T]
+                             {:head {:cat "adj"}}     '[-> E T]
+                             {:head {:cat "v"
+                                     :trans "false"}} '[-> E T]})})
 
 (def a-stx-sig
   "A signature for a level of syntactical description which
@@ -53,11 +53,11 @@
   producing semantic representations via a lexicon (\"ambiguous
   syntax\")"
   {:principal-type 'S
-   :lex-typeo (fs-match {{:head {:cat "n"}}       'N
-                         {:head {:cat "adj"}}     '[-> N N]
-                         {:head {:cat "v"
-                                 :trans "false"}} '[-> NP S]
-                         {:head {:cat "det"}}     '[-> N NP]})})
+   :lex-typespeco (fs-match {{:head {:cat "n"}}       'N
+                             {:head {:cat "adj"}}     '[-> N N]
+                             {:head {:cat "v"
+                                     :trans "false"}} '[-> NP S]
+                             {:head {:cat "det"}}     '[-> N NP]})})
 
 
 (defn string->l-string-lexo

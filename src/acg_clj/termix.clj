@@ -97,8 +97,8 @@
   name/wordform."
   [v]
   (if (map? v)
-    (cond (contains? v :hypertag) (first (get-in v [:hypertag :head :wordform]))
-          (contains? v :constant-name) (:constant-name v)
+    (cond (contains? (:id v) :hypertag) (first (get-in v [:id :hypertag :head :wordform]))
+          (contains? (:id v) :constant-name) (get-in v [:id :constant-name])
           :else v)
     v))
 
