@@ -14,11 +14,12 @@
 
 (defn sig-lexo [signature hypertag constant]
   (if (contains? signature :lex-typeo)
-    (l/fresh [type]
+    (l/fresh [type spec]
              (hypertago hypertag)
-             ((:lex-typeo signature) hypertag type)
+             ((:lex-typeo signature) hypertag type spec)
              (l/== constant {:type type
-                             :hypertag hypertag}))
+                             :hypertag hypertag
+                             :spec spec}))
     l/fail))
 
 (defn sigo [signature constant]
@@ -28,7 +29,7 @@
                      (sig-lexo signature hypertag constant))]))
 
 
-;; TODO: This should know the difference between constants, that need
+;; TODO: This should know the difference between constants, which need
 ;; to be translated, and variables, which are not translated.
 (l/defne apply-lexo [lexo abs-term obj-term]
   ([_ ['var abs-v] _]
@@ -67,8 +68,10 @@
 
 
 (defn unityped [unitype]
-  (fn [hypertag type]
-    (l/== type unitype)))
+  (fn [hypertag type spec]
+    (l/all (hypertago hypertag)
+           (l/== type unitype)
+           (l/== spec nil))))
 
 (defmacro fs-match [patterns]
   (let [hypertag-sym (gensym "hypertag")
@@ -76,8 +79,9 @@
         goals (for [[pat val] patterns]
                 `[(retrievec ~hypertag-sym ~pat)
                   (l/== ~out-sym ~val)])]
-    `(fn [~hypertag-sym ~out-sym]
-       (l/conde ~@goals))))
+    `(fn [~hypertag-sym ~out-sym spec#]
+       (l/all (l/conde ~@goals)
+              (l/== spec# nil)))))
 
 (defmacro with-sig-consts [signature & goals]
   (let [consts (keys (:constants @(resolve signature)))]

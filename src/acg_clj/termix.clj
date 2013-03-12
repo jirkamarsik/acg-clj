@@ -102,26 +102,47 @@
           :else v)
     v))
 
+(defn present-var-also-by-spec
+  "Expects a function that presents a variable and creates a new one
+  that attaches the :spec, if any."
+  [present-var-fn]
+  (fn [v]
+    (if (and (map? v) (not (nil? (:spec v))))
+      (str (present-var-fn v) "(" (:spec v) ")")
+      (present-var-fn v))))
+
+(defn present-var-also-by-type
+  "Expects a function that already knows how to present a variable and
+  produces a new presentation function that also includes type
+  information."
+  [present-var-fn]
+  (fn [v]
+    (if (and (map? v) (contains? v :type))
+      [(present-var-fn v) :> (:type v)]
+      (present-var-fn v))))
+
 (defn ptn
   "A shortcut for calling pt with present-var-by-name."
   [term]
   (binding [*present-var-fn* present-var-by-name]
     (pt term)))
 
-(defn present-var-by-name-and-type
-  "A function for presenting constants produced by acg-clj using their
-  name/wordform and type."
-  [v]
-  (if (and (map? v) (contains? v :type))
-    [(present-var-by-name v) :> (:type v)]
-    (present-var-by-name v)))
-
 (defn ptnt
-  "A shortcut for calling pt with present-var-by-name-and-type."
+  "A shortcut for calling pt with present-var-by-name and
+  also-by-type."
   [term]
-  (binding [*present-var-fn* present-var-by-name-and-type]
+  (binding [*present-var-fn* (-> present-var-by-name
+                                 present-var-also-by-type)]
     (pt term)))
 
+(defn ptnst
+  "A shortcut for calling pt with present-var-by-name, also-by-spec
+  and also-by-type."
+  [term]
+  (binding [*present-var-fn* (-> present-var-by-name
+                                 present-var-also-by-spec
+                                 present-var-also-by-type)]
+    (pt term)))
 
 (defmulti magic-quote-term-fn
   "The implementation of the magic-quote-term macro."
