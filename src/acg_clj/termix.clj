@@ -1,4 +1,7 @@
 (ns acg-clj.termix
+  "Functionality for working with lambda-terms, namely the conversion from
+  a Lisp-style human-readable notation and a more AST-like tagged
+  representation and back."
   (:use plumbing.core))
 
 (def natural->tagged

@@ -1,6 +1,8 @@
 (ns acg-clj.toy-grammar
+  "A toy grammar of French based on our lexicon, used to drive the
+  development of the toolkit."
   (:use [acg-clj.termix :only [rt ptn ptnt]]
-        acg-clj.lexicon))
+        acg-clj.acg))
 
 (def l-string-sig
   "A signature of lambda-encoded strings. A string is a function of type
