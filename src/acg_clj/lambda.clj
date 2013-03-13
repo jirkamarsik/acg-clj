@@ -29,7 +29,9 @@
   keywords :i and :l which disambiguates which variable refers to a
   variable in the intuitionistic or linear context."} typeo
   [c ic lc x t]
-  ([_ _ _ ['var v] _]
+  ([_ _ _ [ref v] _]
+     (l/membero ref ['var 'const])      ; It would be nice to treat
+                                        ; these two cases differently.
      (l/conde [(lookupo c v :i)
                (lookupo ic v t)
                (l/== lc [])]

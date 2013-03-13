@@ -113,8 +113,8 @@
   "Ensures that the two constants have the same :lex-entry."
   [constant-a constant-b]
   (l/fresh [lex-entry]
-           (has-lex-entryo constant-a)
-           (has-lex-entryo constant-b)))
+           (has-lex-entryo constant-a lex-entry)
+           (has-lex-entryo constant-b lex-entry)))
 
 
 ;; TODO: This should know the difference between constants, which need
@@ -124,8 +124,9 @@
   signature), ensures that applying the homomorphic extension of the
   lexicon to `abs-term' yields `obj-term'."} apply-lexo
   [lexo abs-term obj-term]
-  ([_ ['var abs-v] _]
-     (lexo abs-v obj-term))
+  ([_ ['const abs-c] _]
+     (lexo abs-c obj-term))
+  ([_ ['var v] ['var v]])
   ([_ [lam [v] abs-b] [lam [v] obj-b]]
      (l/membero lam '[llam ilam])
      (apply-lexo lexo abs-b obj-b))

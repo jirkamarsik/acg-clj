@@ -21,7 +21,9 @@
   "The ontology of tag types in the tagged representation."
   (-> (make-hierarchy)
       (derive 'llam 'lam)
-      (derive 'ilam 'lam)))
+      (derive 'ilam 'lam)
+      (derive 'var 'ref)
+      (derive 'const 'ref)))
 
 (defn natural-term-type
   "Determines the type (tag) of a natural term."
@@ -29,7 +31,7 @@
   (if (sequential? term)
     (let [op (first term)]
       (get natural->tagged op 'app))
-    'var))
+    'ref))
 
 (defn tagged-term-type
   "Returns the tag of the given tagged term."
@@ -37,35 +39,47 @@
   (first term))
 
 
-(defmulti read-term
-  "Converts a term in its natural notation to its tagged representation."
-  #'natural-term-type
+(defmulti read-term'
+  "Converts a term in its natural notation to its tagged
+  representation. `env' is a map whose keys are variables in the scope
+  of the term."
+  (fn [env term]
+    (natural-term-type term))
   :hierarchy #'term-type-hiero)
 
-(defmethod read-term 'lam [[lam [v & vs :as vars] body]]
-  (if (empty? vars)
-    (read-term body)
-    [(natural->tagged lam) [v] (read-term (list lam vs body))]))
+(defn read-term
+  "Converts a term in its natural notation to its tagged representation."
+  [term]
+  (read-term' {} term))
 
-(defmethod read-term 'app [term]
+(defmethod read-term' 'lam [env [lam [v & vs :as vars] body]]
+  (if (empty? vars)
+    (read-term' env body)
+    [(natural->tagged lam) [v] (read-term' (assoc env v v)
+                                           (list lam vs body))]))
+
+(defmethod read-term' 'app [env term]
   (reduce (fn [f a]
             ['app f a])
-          (map read-term term)))
+          (map (partial read-term' env) term)))
 
-(defmethod read-term 'var [term]
-  ['var term])
+(defmethod read-term' 'ref [env ref]
+  (if (contains? env ref)
+    ['var ref]
+    ['const ref]))
 
 
-(defn ^:dynamic *present-var-fn*
+(defn ^:dynamic *present-const-fn*
   "A customizable dynamic var holding a function that will be used by
-  present-term to provide a human-readable value of variables."
-  [v]
-  v)
+  present-term to provide a human-readable value of constants."
+  [c]
+  c)
 
 (defmulti present-term
   "Maps terms in their tagged representation to the more
-  human-readable natural notation. Calls *present-var-fn* (identity by
-  default) on the variables to determine their human-readable form."
+  human-readable natural notation. Calls *present-const-fn* (identity
+  by default) on the constants to determine their human-readable
+  form."
   #'tagged-term-type
   :hierarchy #'term-type-hiero)
 
@@ -84,7 +98,10 @@
       (list natural-lam [v] p-body))))
 
 (defmethod present-term 'var [[var v]]
-  (*present-var-fn* v))
+  v)
+
+(defmethod present-term 'const [[const c]]
+  (*present-const-fn* c))
 
 (defn pt
   "An alias for present-term."
@@ -92,56 +109,57 @@
   (present-term term))
 
 
-(defn present-var-by-name
+(defn present-const-by-name
   "A function for presenting constants produced by acg-clj using their
   name/wordform."
-  [v]
-  (if (map? v)
-    (cond (contains? (:id v) :wordform) (get-in v [:id :wordform])
-          (contains? (:id v) :constant-name) (get-in v [:id :constant-name])
-          :else v)
-    v))
+  [c]
+  (let [wordform (get-in c [:id :lex-entry :wordform])
+        constant-name (get-in c [:id :constant-name])]
+    (cond (not (nil? wordform)) wordform
+          (not (nil? constant-name)) constant-name
+          :else c)))
 
-(defn present-var-also-by-spec
-  "Expects a function that presents a variable and creates a new one
-  that attaches the :spec, if any."
-  [present-var-fn]
-  (fn [v]
-    (if (and (map? v) (not (nil? (:spec v))))
-      (str (present-var-fn v) "(" (:spec v) ")")
-      (present-var-fn v))))
+(defn present-const-also-by-spec
+  "Expects a function that presents a constant and creates a new one
+  that attaches the [:id :spec], if any."
+  [present-const-fn]
+  (fn [c]
+    (let [spec (get-in c [:id :spec])]
+      (if (not (nil? spec))
+       (str (present-const-fn c) "(" spec ")")
+       (present-const-fn c)))))
 
-(defn present-var-also-by-type
-  "Expects a function that already knows how to present a variable and
+(defn present-const-also-by-type
+  "Expects a function that already knows how to present a constant and
   produces a new presentation function that also includes type
   information."
-  [present-var-fn]
-  (fn [v]
-    (if (and (map? v) (contains? v :type))
-      [(present-var-fn v) :> (:type v)]
-      (present-var-fn v))))
+  [present-const-fn]
+  (fn [c]
+    (if (and (map? c) (contains? c :type))
+      [(present-const-fn c) :> (:type c)]
+      (present-const-fn c))))
 
 (defn ptn
-  "A shortcut for calling pt with present-var-by-name."
+  "A shortcut for calling pt with present-const-by-name."
   [term]
-  (binding [*present-var-fn* present-var-by-name]
+  (binding [*present-const-fn* present-const-by-name]
     (pt term)))
 
 (defn ptnt
-  "A shortcut for calling pt with present-var-by-name and
+  "A shortcut for calling pt with present-const-by-name and
   also-by-type."
   [term]
-  (binding [*present-var-fn* (-> present-var-by-name
-                                 present-var-also-by-type)]
+  (binding [*present-const-fn* (-> present-const-by-name
+                                   present-const-also-by-type)]
     (pt term)))
 
 (defn ptnst
-  "A shortcut for calling pt with present-var-by-name, also-by-spec
+  "A shortcut for calling pt with present-const-by-name, also-by-spec
   and also-by-type."
   [term]
-  (binding [*present-var-fn* (-> present-var-by-name
-                                 present-var-also-by-spec
-                                 present-var-also-by-type)]
+  (binding [*present-const-fn* (-> present-const-by-name
+                                   present-const-also-by-spec
+                                   present-const-also-by-type)]
     (pt term)))
 
 (defmulti magic-quote-term-fn
@@ -160,8 +178,8 @@
     `'~(second term)
    `(list ~@(map magic-quote-term-fn term))))
 
-(defmethod magic-quote-term-fn 'var [v]
-  v)
+(defmethod magic-quote-term-fn 'ref [ref]
+  ref)
 
 (defmacro magic-quote-term
   "A utility for quoting terms written in natural notation. Open
