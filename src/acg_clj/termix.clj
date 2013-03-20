@@ -69,44 +69,33 @@
     ['const ref]))
 
 
-(defn ^:dynamic *present-const-fn*
-  "A customizable dynamic var holding a function that will be used by
-  present-term to provide a human-readable value of constants."
-  [c]
-  c)
-
 (defmulti present-term
   "Maps terms in their tagged representation to the more
-  human-readable natural notation. Calls *present-const-fn* (identity
-  by default) on the constants to determine their human-readable
-  form."
-  #'tagged-term-type
+  human-readable natural notation. The function `pc-fn' is used to
+  render the constants."
+  (fn [pc-fn term]
+    (tagged-term-type term))
   :hierarchy #'term-type-hiero)
 
-(defmethod present-term 'app [[app f a]]
+(defmethod present-term 'app [pc-fn [app f a]]
   (if (= (tagged-term-type f) 'app)
-    (concat (present-term f) (list (present-term a)))
-    (list (present-term f) (present-term a))))
+    (concat (present-term pc-fn f) (list (present-term pc-fn a)))
+    (list (present-term pc-fn f) (present-term pc-fn a))))
 
-(defmethod present-term 'lam [[lam [v] body]]
+(defmethod present-term 'lam [pc-fn [lam [v] body]]
   (let [natural-lam (tagged->natural lam)
-        p-body (present-term body)]
+        p-body (present-term pc-fn body)]
     (if (= (tagged-term-type body) lam)
       (let [[_ inner-vars inner-body] p-body
             vars (vec (cons v inner-vars))]
         (list natural-lam vars inner-body))
       (list natural-lam [v] p-body))))
 
-(defmethod present-term 'var [[var v]]
+(defmethod present-term 'var [pc-fn [var v]]
   v)
 
-(defmethod present-term 'const [[const c]]
-  (*present-const-fn* c))
-
-(defn pt
-  "An alias for present-term."
-  [term]
-  (present-term term))
+(defmethod present-term 'const [pc-fn [const c]]
+  (pc-fn c))
 
 
 (defn present-const-by-name
@@ -139,28 +128,32 @@
       [(present-const-fn c) :> (:type c)]
       (present-const-fn c))))
 
-(defn ptn
-  "A shortcut for calling pt with present-const-by-name."
+(defn pt
+  "A shortcut for calling present-term with identity as the pc-fn."
   [term]
-  (binding [*present-const-fn* present-const-by-name]
-    (pt term)))
+  (present-term identity term))
+
+(defn ptn
+  "A shortcut for calling present-term with present-const-by-name."
+  [term]
+  (present-term present-const-by-name term))
 
 (defn ptnt
-  "A shortcut for calling pt with present-const-by-name and
+  "A shortcut for calling present-term with present-const-by-name and
   also-by-type."
   [term]
-  (binding [*present-const-fn* (-> present-const-by-name
-                                   present-const-also-by-type)]
-    (pt term)))
+  (present-term (-> present-const-by-name
+                    present-const-also-by-type)
+                term))
 
 (defn ptnst
-  "A shortcut for calling pt with present-const-by-name, also-by-spec
-  and also-by-type."
+  "A shortcut for calling present-term with present-const-by-name,
+  also-by-spec and also-by-type."
   [term]
-  (binding [*present-const-fn* (-> present-const-by-name
-                                   present-const-also-by-spec
-                                   present-const-also-by-type)]
-    (pt term)))
+  (present-term (-> present-const-by-name
+                    present-const-also-by-spec
+                    present-const-also-by-type)
+                term))
 
 (defmulti magic-quote-term-fn
   "The implementation of the magic-quote-term macro."
