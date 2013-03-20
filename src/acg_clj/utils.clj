@@ -4,24 +4,6 @@
   (:require [clojure.core.logic :as l])
   (:use plumbing.core))
 
-;; A short hack from Kevin Downey at http://dev.clojure.org/jira/browse/LOGIC-108
-(defn rfeaturec
-  "Just like core.logic's featurec, but lets you use nested maps using
-  unification and multiple featurec constraints."
-  [m f]
-  (let [new-f (reduce (fn [m [k v]] (assoc m k (l/lvar (name k)))) {} (seq f))]
-    (l/all
-      (l/featurec m new-f)
-      (l/everyg
-       (fn [[k lvar]]
-         (let [v (get f k)]
-           (if (map? v)
-             (l/all
-               (l/featurec m {k lvar})
-               (rfeaturec lvar v))
-             (l/== lvar v))))
-       new-f))))
-
 (defn retrievec
   "A goal/(series of constraints) that ensures that the hypertag is
   compatible with the pattern. For the pattern to be compatible with
@@ -38,7 +20,7 @@
                       (swap! lvar-value-pairs assoc lvar pat)
                       lvar)))
         lvar-pattern (lvarize pattern)]
-    (l/all (rfeaturec hypertag lvar-pattern)
+    (l/all (l/featurec hypertag lvar-pattern)
            (l/everyg (fn [[lvar val]]
                        (l/membero val lvar))
                      @lvar-value-pairs))))
