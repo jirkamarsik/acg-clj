@@ -117,22 +117,22 @@
            (has-lex-entryo constant-b lex-entry)))
 
 
-;; TODO: This should know the difference between constants, which need
-;; to be translated, and variables, which are not translated.
-(l/defne ^{:doc "Given a lexicon (a binary relation encoding a mapping
-  from constants over the abstract signature to terms over the object
-  signature), ensures that applying the homomorphic extension of the
-  lexicon to `abs-term' yields `obj-term'."} apply-lexo
-  [lexo abs-term obj-term]
-  ([_ ['const abs-c] _]
-     (lexo abs-c obj-term))
-  ([_ ['var v] ['var v]])
-  ([_ [lam [v] abs-b] [lam [v] obj-b]]
-     (l/membero lam '[llam ilam])
-     (apply-lexo lexo abs-b obj-b))
-  ([_ ['app abs-f abs-a] ['app obj-f obj-a]]
-     (apply-lexo lexo abs-f obj-f)
-     (apply-lexo lexo abs-a obj-a)))
+(defn lexo-extend [lexo]
+  "Given a lexicon (a binary relation encoding a mapping from
+  constants over the abstract signature to terms over the object
+  signature), returns its homomorphic extension to terms (a binary
+  relation encoding a mapping from abstract terms to object terms)."
+  (fn extended-lexo [abs-term obj-term]
+    (l/matche [abs-term obj-term]
+              ([['const abs-c] _]
+                 (lexo abs-c obj-term))
+              ([['var v] ['var v]])
+              ([[lam [v] abs-b] [lam [v] obj-b]]
+                 (l/membero lam '[llam ilam])
+                 (extended-lexo abs-b obj-b))
+              ([['app abs-f abs-a] ['app obj-f obj-a]]
+                 (extended-lexo abs-f obj-f)
+                 (extended-lexo abs-a obj-a)))))
 
 
 ;; WARNING: Too demanding to run l/run*.

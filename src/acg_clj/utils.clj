@@ -51,3 +51,13 @@
      (l/all goal
             (apply andg goals))))
 
+(defn compg
+  "Like comp, but composes binary relation that encode functions."
+  ([]
+     (fn [x y]
+       (l/== x y)))
+  ([goal & goals]
+     (fn [x z]
+       (l/fresh [y]
+                ((apply compg goals) x y)
+                (goal y z)))))
