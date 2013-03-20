@@ -32,11 +32,11 @@
   ([_ _ _ [ref v] _]
      (l/membero ref ['var 'const])      ; It would be nice to treat
                                         ; these two cases differently.
-     (l/conde [(lookupo c v :i)
+     (l/conde [(l/== lc [])
                (lookupo ic v t)
-               (l/== lc [])]
-              [(lookupo c v :l)
-               (l/== lc [[v t]])]))
+               (lookupo c v :i)]
+              [(l/== lc [[v t]])
+               (lookupo c v :l)]))
   ([_ _ _ [lam [v] b] [arrow vt bt]]
      (l/fresh [nic nlc nc]
               (l/conde [(l/== lam 'llam)
@@ -51,12 +51,11 @@
                         (l/conso [v :i] c nc)])
               (typeo nc nic nlc b bt)))
   ([_ _ _ ['app f a] _]
-     (l/fresh [lcf lca ft at]
-              (l/conde [(l/== ft ['-> at t])
-                        (mergeo lcf lca lc)]
-                       [(l/== ft ['=> at t])
-                        (l/== lcf lc)
-                        (l/== lca [])])
-              (typeo c ic lcf f ft)
-              (typeo c ic lca a at))))
+     (l/fresh [at]
+              (l/conde [(l/fresh [lcf lca]
+                                 (typeo c ic lcf f ['-> at t])
+                                 (typeo c ic lca a at)
+                                 (mergeo lcf lca lc))]
+                       [(typeo c ic lc f ['=> at t])
+                        (typeo c ic [] a at)]))))
 
