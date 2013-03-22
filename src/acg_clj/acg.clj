@@ -220,7 +220,7 @@
   specifier is set as nil."
   [patterns]
   (fn [hypertag type spec]
-    (l/all (apply fs-assigne hypertag type (mapcat identity patterns))
+    (l/all (apply fs-assigne hypertag type (apply concat patterns))
            (l/== spec nil))))
 
 (defmacro with-sig-consts
