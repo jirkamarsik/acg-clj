@@ -106,7 +106,7 @@
   [constant cat]
   (l/fresh [hypertag cats]
            (has-hypertago constant hypertag)
-           (rfeaturec hypertag {:head {:cat cats}})
+           (l/featurec hypertag {:head {:cat cats}})
            (l/membero cat cats)))
 
 (defn share-lex-entryo
