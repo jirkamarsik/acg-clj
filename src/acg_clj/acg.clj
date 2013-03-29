@@ -1,7 +1,8 @@
 (ns acg-clj.acg
   "Relations implementing the notions of abstract categorial
   grammars (signatures and lexicons)."
-  (:require [clojure.core.logic :as l])
+  (:require [clojure.core.logic :as l]
+            [clojure.core.logic.nominal :as n])
   (:use (acg-clj lambda
                  lexicon
                  utils)
@@ -127,9 +128,12 @@
               ([['const abs-c] _]
                  (lexo abs-c obj-term))
               ([['var v] ['var v]])
-              ([[lam [v] abs-b] [lam [v] obj-b]]
+              ([[lam abs-binder] [lam obj-binder]]
                  (l/membero lam '[llam ilam])
-                 (extended-lexo abs-b obj-b))
+                 (l/fresh [v abs-b obj-b]
+                          (l/== abs-binder (n/tie v abs-b))
+                          (l/== obj-binder (n/tie v obj-b))
+                          (extended-lexo abs-b obj-b)))
               ([['app abs-f abs-a] ['app obj-f obj-a]]
                  (extended-lexo abs-f obj-f)
                  (extended-lexo abs-a obj-a)))))

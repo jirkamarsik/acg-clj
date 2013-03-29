@@ -2,6 +2,8 @@
   "Functionality for working with lambda-terms, namely the conversion from
   a Lisp-style human-readable notation and a more AST-like tagged
   representation and back."
+  (:require [clojure.core.logic :as l]
+            [clojure.core.logic.nominal :as n])
   (:use plumbing.core))
 
 (def natural->tagged
@@ -55,8 +57,9 @@
 (defmethod read-term' 'lam [env [lam [v & vs :as vars] body]]
   (if (empty? vars)
     (read-term' env body)
-    [(natural->tagged lam) [v] (read-term' (assoc env v v)
-                                           (list lam vs body))]))
+    (let [nom-v (n/nom (l/lvar v))]
+      [(natural->tagged lam) (n/tie nom-v (read-term' (assoc env v nom-v)
+                                                      (list lam vs body)))])))
 
 (defmethod read-term' 'app [env term]
   (reduce (fn [f a]
@@ -65,7 +68,7 @@
 
 (defmethod read-term' 'ref [env ref]
   (if (contains? env ref)
-    ['var ref]
+    ['var (get env ref)]
     ['const ref]))
 
 
@@ -82,8 +85,10 @@
     (concat (present-term pc-fn f) (list (present-term pc-fn a)))
     (list (present-term pc-fn f) (present-term pc-fn a))))
 
-(defmethod present-term 'lam [pc-fn [lam [v] body]]
+(defmethod present-term 'lam [pc-fn [lam binder]]
   (let [natural-lam (tagged->natural lam)
+        v (:binding-nom binder)
+        body (:body binder)
         p-body (present-term pc-fn body)]
     (if (= (tagged-term-type body) lam)
       (let [[_ inner-vars inner-body] p-body
