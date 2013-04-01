@@ -3,6 +3,9 @@
   development of the toolkit."
   (:require [clojure.core.logic :as l])
   (:use acg-clj.acg
+        acg-clj.check
+        acg-clj.convenience
+        acg-clj.lambda
         [acg-clj.termix :only [rt ptn ptnt ptnst]]))
 
 (def l-string-sig
@@ -20,15 +23,19 @@
    :lex-typespeco (unityper 'Str)})
 
 (def ua-stx-sig
-  "A signature of syntactic descriptions. On this level, the so-called
-  scope ambiguities are not reflected by ambiguities in the
-  syntax (\"unambiguous syntax\")."
+  "A signature of syntactic descriptions. On this level, scope
+  ambiguities should not become syntactic ambiguities."
   {:principal-type 'S
-   :lex-typespeco (ht->type-mapper {{:head {:cat "n"}}       'N
-                                    {:head {:cat "adj"}}     '[-> N N]
-                                    {:head {:cat "det"}}     '[-> N NP]
-                                    {:head {:cat "v"
-                                            :trans "false"}} '[-> NP S]})})
+   :lex-typespeco (ht->type-mapper '{{:head {:cat "n"}}       N
+                                     {:head {:cat "adj"
+                                             :order "left"}}  [-> N N]
+                                     {:head {:cat "adj"
+                                             :order "right"}} [-> N N]
+                                     {:head {:cat "det"}}     [-> N NP]
+                                     {:head {:cat "v"
+                                             :trans "false"}} [-> NP S]
+                                     {:head {:cat "v"
+                                             :trans "true"}}  [-> NP [-> NP S]]})})
 
 (def sim-sem-sig
   "A signature for simple semantic representations. Contains the usual
@@ -42,22 +49,28 @@
                 bottom  T
                 forall? [-> [=> E T] T]
                 exists? [-> [=> E T] T]}
-   :lex-typespeco (ht->type-mapper {{:head {:cat "n"}}       '[-> E T]
-                                    {:head {:cat "adj"}}     '[-> E T]
-                                    {:head {:cat "v"
-                                            :trans "false"}} '[-> E T]})})
+   :lex-typespeco (ht->type-mapper '{{:head {:cat "n"}}       [=> E T]
+                                     {:head {:cat "adj"}}     [-> E T]
+                                     {:head {:cat "v"
+                                             :trans "false"}} [-> E T]
+                                     {:head {:cat "v"
+                                             :trans "true"}}  [-> E [-> E T]]})})
 
 (def a-stx-sig
   "A signature for a level of syntactical description which
-  distinguishes between scopes of constituents, making it feasible for
-  producing semantic representations via a lexicon (\"ambiguous
-  syntax\")"
+  distinguishes between different scopes of verb readings by
+  type-raising quantified noun phrases."
   {:principal-type 'S
-   :lex-typespeco (ht->type-mapper {{:head {:cat "n"}}       'N
-                                    {:head {:cat "adj"}}     '[-> N N]
-                                    {:head {:cat "v"
-                                            :trans "false"}} '[-> NP S]
-                                    {:head {:cat "det"}}     '[-> N NP]})})
+   :lex-typespeco (ht->type-mapper '{{:head {:cat "n"}}       N
+                                     {:head {:cat "adj"
+                                             :order "left"}}  [-> N N]
+                                     {:head {:cat "adj"
+                                             :order "right"}} [-> N N]
+                                     {:head {:cat "v"
+                                             :trans "false"}} [-> NP S]
+                                     {:head {:cat "v"
+                                             :trans "true"}}  [-> NP [-> NP S]]
+                                     {:head {:cat "det"}}     [-> N [-> [-> NP S] S]]})})
 
 
 (defn string->l-string-lexo
@@ -65,27 +78,25 @@
   Basically just implements the string concatenation operator using
   function composotion."
   [string-constant l-string-term]
-  (l/all (sigo string-sig string-constant)
-         (l/conde [(l/fresh [l-string-constant]
-                            (share-lex-entryo string-constant l-string-constant)
-                            (sig-lexo l-string-sig l-string-constant)
-                            (l/== l-string-term (rt l-string-constant)))]
-                  [((const-lexicon {'++ (rt (ll [x y t] (x (y t))))})
-                    string-constant l-string-term)])))
+  (l/conde [(l/fresh [l-string-constant]
+                     (share-lex-entryo string-constant l-string-constant)
+                     (sig-lexo l-string-sig l-string-constant)
+                     (l/== l-string-term (rt l-string-constant)))]
+           [((const-lexicon {'++ (rt (ll [x y t] (x (y t))))})
+             string-constant l-string-term)]))
 
 (defn ua-stx->string-lexo
   "A lexicon from the ua-stx signature to the string signature.
   Responsible for determining the word order between constituents."
   [ua-stx-constant string-term]
   (with-sig-consts string-sig
-    (sigo ua-stx-sig ua-stx-constant)
     (l/fresh [string-constant hypertag]
              (share-lex-entryo ua-stx-constant string-constant)
              (sig-lexo string-sig string-constant)
              (has-hypertago ua-stx-constant hypertag)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))]
-               (fs-assigne hypertag string-term
+               (fs-assigne hypertag                 string-term
                            {:head {:cat "n"}}       (rt string-constant)
                            {:head {:cat "adj"
                                    :order "right"}} suffix
@@ -93,23 +104,29 @@
                                    :order "left"}}  prefix
                            {:head {:cat "det"}}     prefix
                            {:head {:cat "v"
-                                   :trans "false"}} suffix)))))
+                                   :trans "false"}} suffix
+                           {:head {:cat "v"
+                                   :trans "true"}} (rt (ll [x y]
+                                                           (++ (++ x string-constant)
+                                                               y))))))))
 
 (defn a-stx->ua-stx-lexo
-  "A lexicon from the a-stx signature to the ua-stx signature. For
-  now, it is just an identity function."
+  "A lexicon from the a-stx signature to the ua-stx signature.
+  `Undoes` the type-raising of quantified noun phrases."
   [a-stx-constant ua-stx-term]
-  (l/all (sigo a-stx-sig a-stx-constant)
-         (l/fresh [ua-stx-constant hypertag]
-                  (share-lex-entryo a-stx-constant ua-stx-constant)
-                  (sig-lexo ua-stx-sig ua-stx-constant)
-                  (has-hypertago a-stx-constant hypertag)
-                  (fs-assigne hypertag ua-stx-term
-                              {:head {:cat "n"}}       (rt ua-stx-constant)
-                              {:head {:cat "adj"}}     (rt ua-stx-constant)
-                              {:head {:cat "v"
-                                      :trans "false"}} (rt ua-stx-constant)
-                              {:head {:cat "det"}}     (rt ua-stx-constant)))))
+  (l/fresh [ua-stx-constant hypertag]
+           (share-lex-entryo a-stx-constant ua-stx-constant)
+           (sig-lexo ua-stx-sig ua-stx-constant)
+           (has-hypertago a-stx-constant hypertag)
+           (fs-assigne hypertag ua-stx-term
+                       {:head {:cat "n"}}
+                       ,(rt ua-stx-constant)
+                       {:head {:cat "adj"}}
+                       ,(rt ua-stx-constant)
+                       {:head {:cat "v"}}
+                       ,(rt ua-stx-constant)
+                       {:head {:cat "det"}}
+                       ,(rt (ll [x R] (R (ua-stx-constant x)))))))
 
 (defn a-stx->sim-sem-lexo
   "A lexicon from the a-stx signature to the sim-sem signature.
@@ -117,7 +134,6 @@
   combine, implements determiners."
   [a-stx-constant sim-sem-term]
   (with-sig-consts sim-sem-sig
-    (sigo a-stx-sig a-stx-constant)
     (l/fresh [sim-sem-constant hypertag]
              (has-hypertago a-stx-constant hypertag)
              (l/conde [(share-lex-entryo a-stx-constant sim-sem-constant)
@@ -128,11 +144,23 @@
                                    {:head {:cat "adj"}}
                                    ,(rt (ll [n] (il [x] (and? (sim-sem-constant x)
                                                               (n x)))))
-                                   {:head {:cat "v"
-                                           :trans "false"}}
-                                   ,(rt (ll [S] (S (ll [x] (sim-sem-constant x))))))]
+                                   {:head {:cat "v"}}
+                                   ,(rt sim-sem-constant))]
                       [(fs-assigne hypertag sim-sem-term
                                    {:head {:cat "det"
                                            :det_type "indef"}}
                                    ,(rt (ll [p q] (exists? (il [x] (and? (p x)
+                                                                         (q x))))))
+                                   {:head {:cat "det"
+                                           :det_type "def"}}
+                                   ,(rt (ll [p q] (forall? (il [x] (imp? (p x)
                                                                          (q x)))))))]))))
+
+
+(let [test-wordforms ["une" "les" "dort" "mangent" "grand" "vert" "enfant"]]
+  (doseq [[sig lexo] [[a-stx-sig a-stx->sim-sem-lexo]
+                      [a-stx-sig a-stx->ua-stx-lexo]
+                      [ua-stx-sig ua-stx->string-lexo]
+                      [string-sig string->l-string-lexo]]]
+    (test-lexicon-fn? sig (lexo-extend lexo) test-wordforms)
+    (test-lexicon-homo? sig (lexo-extend lexo) test-wordforms)))
