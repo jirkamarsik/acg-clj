@@ -4,6 +4,14 @@
   (:require [clojure.core.logic :as l])
   (:use plumbing.core))
 
+(l/defne ^{:doc "A relation ensuring that the alist `al' associates
+  the key `k' with the value `v'."} assoco
+  [al k v]
+  ([[[k v] . _] _ _])
+  ([[[k' v'] . ral] _ _]
+     (l/!= k k')
+     (assoco ral k v)))
+
 (defn retrievec
   "A goal/(series of constraints) that ensures that the hypertag is
   compatible with the pattern. For the pattern to be compatible with
