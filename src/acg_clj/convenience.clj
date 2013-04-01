@@ -1,7 +1,7 @@
 (ns acg-clj.convenience
   (:require [clojure.core.logic :as l])
   (:use acg-clj.acg
-        [acg-clj.termix :only [rt]]))
+        acg-clj.termix))
 
 (defmacro with-words
   "Expects a signature and a vector of bindings in which names are
@@ -21,16 +21,24 @@
                         (partition 2 ~word-bindings))
               ~@goals)))
 
-(defmacro frobo [sig out term]
-  (let [gsym-string-map (atom {})
+(defn term-in-sigo [sig out term]
+  (let [lvar-string-map (atom {})
         ;; This is almost the same as lvarize in retrievec => solve
         ;; using some HOFs.
-        gsymize (fn gsymize [term]
-                  (cond (seq? term) (doall (map gsymize term))
-                        (string? term) (let [gsym (gensym)]
-                                         (swap! gsym-string-map assoc gsym term)
-                                         gsym)
-                        :else term))
-        gsym-term (gsymize term)]
-    `(with-words ~sig ~(vec (apply concat @gsym-string-map))
-       (l/== ~out (rt ~gsym-term)))))
+        lvar-term (termpostwalk (fn [t]
+                                  (if (and (= (tagged-term-type t) 'const)
+                                           (string? (second t)))
+                                    (let [lvar (l/lvar)]
+                                         (swap! lvar-string-map assoc lvar (second t))
+                                         ['const lvar])
+                                    t))
+                                term)]
+    (l/all (l/everyg (fn [[c w]]
+                       (l/all (has-wordformo c w)
+                              (sig-lexo sig c)))
+                     (seq @lvar-string-map))
+           (l/== out lvar-term))))
+
+(defmacro rt-in-sigo [sig out term]
+  `(with-sig-consts ~sig
+     (term-in-sigo ~sig ~out (rt ~term))))
