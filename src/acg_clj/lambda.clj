@@ -19,10 +19,19 @@
   (l/membero [x t] env))
 
 (defn env-addo [e-in x t e-out]
-  (l/all #_(envo e-in)
-         (env-not-ino e-in x)
-         (l/conso [x t] e-in e-out)
-         #_(envo e-out)))
+  (l/all (not-in-envo x e-in)
+         (l/conso [x t] e-in e-out)))
+
+(defn encodeo [string term]
+  (n/fresh [fin]
+           (l/conde [(l/== string [])
+                     (l/== term ['llam (n/tie fin ['var fin])])]
+                    [(l/fresh [word rest-string rest-term rest-body]
+                              (l/conso word rest-string string)
+                              (l/== rest-term ['llam (n/tie fin rest-body)])
+                              (l/== term ['llam (n/tie fin ['app ['const word]
+                                                                 rest-body])])
+                              (encodeo rest-string rest-term))])))
 
 (l/defne ^{:doc "A relation ensuring that the list `l' can be formed
   by merging the lists `l1' and `l2'. When merging two lists, any of
