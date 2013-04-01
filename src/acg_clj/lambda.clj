@@ -74,3 +74,69 @@
   ""
   [x t]
   (typeo [] [] x t))
+
+
+;; The parts below are based on the work of Nada Amin.
+
+(l/defne substo [e a new out] ;; out == e[a/new]
+  ([['const c] _ _ ['const c]])
+  ([['var a] _ _ new])
+  ([['var b] _ _ e]
+     (n/hash a b))
+  ([['app fn arg] _ _ ['app fn' arg']]
+     (substo fn a new fn')
+     (substo arg a new arg'))
+  ([[lam binder] _ _ [lam binder']]
+     (l/fresh [body body']
+              (n/fresh [var]
+                       (l/membero lam '[llam ilam])
+                       (l/== binder (n/tie var body))
+                       (l/== binder' (n/tie var body'))
+                       (n/hash var a)
+                       (n/hash var new)
+                       (substo body a new body')))))
+
+(l/defne valo [e]
+  ([['const _]])
+  ([['var _]])
+  ([['app fn arg]]
+     (valo fn)
+     (valo arg)
+     (l/fresh [fn-tag]
+              (l/firsto fn fn-tag)
+              (l/!= fn-tag 'llam)
+              (l/!= fn-tag 'ilam)))
+  ([[lam binder]]
+     (l/fresh [body]
+              (n/fresh [var]
+                       (l/== binder (n/tie var body))
+                       (valo body)))))
+
+(l/defne stepo [e o]
+  ([['app fn arg] ['app fn' arg]]
+     (stepo fn fn'))
+  ([['app fn arg] ['app fn arg']]
+     (valo fn)
+     (stepo arg arg'))
+  ([['app fn arg] _]
+     (valo fn)
+     (valo arg)
+     (l/fresh [lam fn-body]
+              (n/fresh [fn-var]
+                       (l/== fn [lam (n/tie fn-var fn-body)])
+                       (l/membero lam '[llam ilam])
+                       (substo fn-body fn-var arg o))))
+  ([[lam binder] [lam binder']]
+     (l/membero lam '[llam ilam])
+     (l/fresh [body body']
+              (n/fresh [var]
+                       (l/== binder (n/tie var body)) 
+                       (l/== binder' (n/tie var body'))
+                       (stepo body body')))))
+
+(defn stepo* [e o]
+  (l/conde [(valo e)
+            (l/== e o)]
+           [(l/fresh [i]
+                     (stepo e i)
+                     (stepo* i o))]))
