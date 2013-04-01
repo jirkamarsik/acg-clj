@@ -9,6 +9,7 @@
         acg-clj.check
         acg-clj.convenience
         acg-clj.lambda
+        acg-clj.utils
         [acg-clj.termix :only [rt ptn ptnt ptnst]]
         [acg-clj.toy-grammar :only [l-string-sig string-sig sim-sem-sig
                                     string->l-string-lexo]]))
