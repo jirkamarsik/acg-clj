@@ -4,21 +4,19 @@
             [clojure.core.logic.nominal :as n])
   (:use acg-clj.utils))
 
-(l/defne env-not-ino [env name]
-  ([[] _])
-  ([[[other-name _] . rest-env] _]
+;; This implementation does not put hash constraints on the values of
+;; the context, but it can cause an occurs check stack overflow.
+#_(l/defne not-in-envo [name env]
+  ([_ []])
+  ([_ [[other-name _] . rest-env]]
      (n/hash name other-name)
-     (env-not-ino rest-env)))
+     (not-in-envo name rest-env)))
 
-(l/defne envo [env]
-  ([[]])
-  ([[[name type] . rest-env]]
-     (env-not-ino name rest-env)
-     (envo rest-env)))
+(defn not-in-envo [name env]
+  (n/hash name env))
 
 (defn env-lookupo [env x t]
-  (l/all #_(envo env)
-         (l/membero [x t] env)))
+  (l/membero [x t] env))
 
 (defn env-addo [e-in x t e-out]
   (l/all #_(envo e-in)
@@ -33,10 +31,10 @@
   ([[] e2 e2])
   ([[h1 . t1] [] [h1 . t1]])
   ([[[h1-n h1-t] . t1] [h2 . t2] [[h1-n h1-t] . t]]
-     (env-not-ino e2 h1-n)
+     (not-in-envo h1-n e2)
      (env-mergeo t1 e2 t))
   ([[h1 . t1] [[h2-n h2-t] . t2] [[h2-n h2-t] . t]]
-     (env-not-ino e1 h2-n)
+     (not-in-envo h2-n e1)
      (env-mergeo e1 t2 t)))
 
 (l/defne ^{:doc "A relation ensuring that the lambda term `x' (in its
@@ -49,7 +47,7 @@
      (l/conde [(l/== lc [])
                (env-lookupo ic v t)]
               [(l/== lc [[v t]])
-               (n/hash v ic)]))
+               (not-in-envo v ic)]))
   ([_ _ [lam binder] [arrow vt bt]]
      (l/fresh [nic nlc b]
               (n/fresh [v]
