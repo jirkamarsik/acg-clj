@@ -192,3 +192,21 @@
   [term]
   `(read-term (magic-quote-term ~term)))
 
+
+
+(defmulti termwalk (fn [inner outer term]
+                     (tagged-term-type term))
+  :hierarchy #'term-type-hiero)
+
+(defmethod termwalk 'app [inner outer [app f a]]
+  (outer [app (inner f) (inner a)]))
+
+(defmethod termwalk 'lam [inner outer [lam binder]]
+  (outer [lam (n/tie (:binding-nom binder)
+                     (inner (:body binder)))]))
+
+(defmethod termwalk 'ref [inner outer ref]
+  (outer ref))
+
+(defn termpostwalk [f term]
+  (termwalk (partial termpostwalk f) f term))
