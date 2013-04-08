@@ -193,20 +193,53 @@
   `(read-term (magic-quote-term ~term)))
 
 
-
-(defmulti termwalk (fn [inner outer term]
-                     (tagged-term-type term))
+(defmulti term-walk
+  "Like clojure.walk/walk. Maps `inner' over the direct subterms of
+  `term' and then applies `outer' to the resulting modified term."
+  (fn [inner outer term]
+    (tagged-term-type term))
   :hierarchy #'term-type-hiero)
 
-(defmethod termwalk 'app [inner outer [app f a]]
+(defmethod term-walk 'app [inner outer [app f a]]
   (outer [app (inner f) (inner a)]))
 
-(defmethod termwalk 'lam [inner outer [lam binder]]
+(defmethod term-walk 'lam [inner outer [lam binder]]
   (outer [lam (n/tie (:binding-nom binder)
                      (inner (:body binder)))]))
 
-(defmethod termwalk 'ref [inner outer ref]
+(defmethod term-walk 'ref [inner outer ref]
   (outer ref))
 
-(defn termpostwalk [f term]
-  (termwalk (partial termpostwalk f) f term))
+(defn term-postwalk
+  "Like clojure.walk/postwalk. Transforms every subterm of `term'
+  using the function `f' (post-order)."
+  [f term]
+  (term-walk (partial term-postwalk f) f term))
+
+
+(defmulti unreify-term'
+  "Implementation multimethod for `unreify-term'. `env' is a mapping
+  from reified names to new noms."
+  (fn [env term] (tagged-term-type term))
+  :hierarchy #'term-type-hiero)
+
+(defn unreify-term
+  "Replaces all the reified symbols inside a term back into noms."
+  [term]
+  (unreify-term' {} term))
+
+(defmethod unreify-term' :default [env term]
+  term)
+
+(defmethod unreify-term' 'lam [env [lam binder]]
+  (let [var-name (:binding-nom binder)
+        var-nom (n/nom (l/lvar var-name))]
+    [lam (n/tie var-nom
+                (unreify-term' (assoc env var-name var-nom)
+                               (:body binder)))]))
+
+(defmethod unreify-term' 'app [env [app f a]]
+  [app (unreify-term' env f) (unreify-term' env a)])
+
+(defmethod unreify-term' 'var [env [var v]]
+  [var (get env v)])

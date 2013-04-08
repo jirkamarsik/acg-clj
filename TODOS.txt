@@ -1,0 +1,12 @@
+* Handle the optional features on hypertags.
+
+* retrievec deserves a better name
+
+* Decomplect Frilex from the toolkit
+
+* Write tests!!!
+
+* Maybe move everything form utils.clj to the place where it is
+  actually used?
+    * assoco -> check.clj
+    * retrievec -> acg.clj

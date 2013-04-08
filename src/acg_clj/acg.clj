@@ -9,34 +9,37 @@
         plumbing.core))
 
 (defn sig-consto
-  "Given a signature, this relation ensures that `constant' is an
+  "Given `signature', returns a relation saying that `constant' is an
   extra-lexical (explicitly declared) constant of the signature."
-  [signature constant]
-  (l/fresh [name type]
-           (l/== constant {:type type
-                           :id {:constant-name name}})
-           (l/membero [name type] (seq (:constants signature)))))
+  [signature]
+  (fn [constant]
+    (l/fresh [name type]
+             (l/== constant {:type type
+                             :id {:constant-name name}})
+             (l/membero [name type] (seq (:constants signature))))))
 
 (defn sig-lexo
-  "Given a signature, this relation ensures that `constant' is a
+  "Given `signature', returns a relation saying that `constant' is a
   lexical (induced from lexicon) constant of the signature."
-  [signature constant]
-  (if (contains? signature :lex-typespeco)
-    (l/fresh [wordform hypertag type spec]
-             (l/== constant {:type type
-                             :id {:lex-entry {:wordform wordform
-                                              :hypertag hypertag}
-                                  :spec spec}})
-             (lexicono wordform hypertag)
-             ((:lex-typespeco signature) hypertag type spec))
-    l/fail))
+  [signature]
+  (fn [constant]
+    (if (contains? signature :lex-typespeco)
+      (l/fresh [wordform hypertag spec type]
+               (l/== constant {:type type
+                               :id {:lex-entry {:wordform wordform
+                                                :hypertag hypertag}
+                                    :spec spec}})
+               (lexicono wordform hypertag)
+               ((:lex-typespeco signature) wordform hypertag spec type))
+      l/fail)))
 
 (defn sigo
-  "Given a signature, ensures that `constant' is a constant of the
-  signature."
-  [signature constant]
-  (l/conde [(sig-consto signature constant)]
-           [(sig-lexo signature constant)]))
+  "Given `signature', returns a relation saying that `constant' is a
+  constant of the signature."
+  [signature]
+  (fn [constant]
+    (l/conde [((sig-consto signature) constant)]
+             [((sig-lexo signature) constant)])))
 
 ;; Maybe generate the following "accessor" relations by some magic
 ;; macro from the schema below.
@@ -99,16 +102,12 @@
            (l/== lex-entry {:wordform wordform
                             :hypertag hypertag})))
 
-
-;; MAYBE-USEFUL?
 (defn has-cato
-  "Ensures that the head of the hypertag of `constant' is compatible
-  with the category `cat'."
+  ""
   [constant cat]
-  (l/fresh [hypertag cats]
+  (l/fresh [hypertag]
            (has-hypertago constant hypertag)
-           (l/featurec hypertag {:head {:cat cats}})
-           (l/membero cat cats)))
+           (retrievec hypertag {:head {:cat cat}})))
 
 (defn share-lex-entryo
   "Ensures that the two constants have the same :lex-entry."
@@ -140,53 +139,12 @@
                  (extended-lexo abs-a obj-a)))))
 
 
-;; WARNING: Too demanding to run l/run*.
-;; TODO: Find a better way to do this.
-(defn sig-termo
-  "Given a signature, ensures that `term' is a correctly typed lambda-term
-  over the signature having type `type'."
-  [signature term type]
-  (let [consts (l/run* [q] (sigo signature q))]
-    (typeo (for [const consts] [const :i])
-           (for [const consts] [const (:type const)])
-           []
-           term
-           type)))
-
-;; WARNING: Same problems as sig-termo.
-(defn sig-sento
-  "Given a signature, ensures that `term' is a correctly typed lambda-term
-  over the signature having the signature's principal type."
-  [signature sentence]
-  (sig-termo signature sentence (:principal-type signature)))
-
-
-;; MAYBE-USEFUL?
-(defn sig-findo
-  "Given a signature, ensures that `constant' is a constant of the
-  signature induced by a lexical entry having the wordform
-  `wordform'."
-  [signature wordform constant]
-  (l/all (has-wordformo constant wordform)
-         (sig-lexo signature constant)))
-
-;; MAYBE-USEFUL?
-(defn sig-findo'
-  "Given a signature, ensures that `constant' is a constant of the
-  signature having type `type' and induced by a lexical entry having
-  the wordform `wordform'."
-  [signature wordform constant type]
-  (l/all (has-wordformo constant wordform)
-         (has-typeo constant type)
-         (sig-lexo signature constant)))
-
-
 (defn unityper
   "Returns a :lex-typespeco (relation associating a hypertag with a
   type and specifier), that always assigns the type `unitype' and a
   nil spec."
   [unitype]
-  (fn [hypertag type spec]
+  (fn [wordform hypertag spec type]
     (l/all (l/== type unitype)
            (l/== spec nil))))
 
@@ -224,7 +182,7 @@
   assigns the respective values of the patterns as types. The
   specifier is set as nil."
   [patterns]
-  (fn [hypertag type spec]
+  (fn [wordform hypertag spec type]
     (l/all (apply fs-assigne hypertag type (apply concat patterns))
            (l/== spec nil))))
 
@@ -237,7 +195,7 @@
     `(l/fresh ~(vec consts)
               ~@(for [const consts]
                   `(l/all (has-nameo ~const '~const)
-                          (sig-consto ~signature ~const)))
+                          ((sig-consto ~signature) ~const)))
               ~@goals)))
 
 (defn const-lexicon

@@ -1,3 +1,0 @@
-* Handle the optional features on hypertags.
-
-* Move drop-constraints from utils to convenience?

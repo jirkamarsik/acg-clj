@@ -2,12 +2,11 @@
   "A toy grammar of French based on our lexicon, used to drive the
   development of the toolkit."
   (:require [clojure.core.logic :as l])
-  (:use acg-clj.acg
-        acg-clj.check
-        acg-clj.convenience
-        acg-clj.lambda
-        acg-clj.utils
-        [acg-clj.termix :only [rt ptn ptnt ptnst]]))
+  (:use (acg-clj acg
+                 convenience
+                 lambda
+                 utils
+                 [termix :only [rt ptn ptnt ptnst]])))
 
 (def l-string-sig
   "A signature of lambda-encoded strings. A string is a function of type
@@ -81,7 +80,7 @@
   [string-constant l-string-term]
   (l/conde [(l/fresh [l-string-constant]
                      (share-lex-entryo string-constant l-string-constant)
-                     (sig-lexo l-string-sig l-string-constant)
+                     ((sig-lexo l-string-sig) l-string-constant)
                      (l/== l-string-term (rt l-string-constant)))]
            [((const-lexicon {'++ (rt (ll [x y t] (x (y t))))})
              string-constant l-string-term)]))
@@ -93,7 +92,7 @@
   (with-sig-consts string-sig
     (l/fresh [string-constant hypertag]
              (share-lex-entryo ua-stx-constant string-constant)
-             (sig-lexo string-sig string-constant)
+             ((sig-lexo string-sig) string-constant)
              (has-hypertago ua-stx-constant hypertag)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))]
@@ -117,7 +116,7 @@
   [a-stx-constant ua-stx-term]
   (l/fresh [ua-stx-constant hypertag]
            (share-lex-entryo a-stx-constant ua-stx-constant)
-           (sig-lexo ua-stx-sig ua-stx-constant)
+           ((sig-lexo ua-stx-sig) ua-stx-constant)
            (has-hypertago a-stx-constant hypertag)
            (fs-assigne hypertag ua-stx-term
                        {:head {:cat "n"}}
@@ -138,7 +137,7 @@
     (l/fresh [sim-sem-constant hypertag]
              (has-hypertago a-stx-constant hypertag)
              (l/conde [(share-lex-entryo a-stx-constant sim-sem-constant)
-                       (sig-lexo sim-sem-sig sim-sem-constant)
+                       ((sig-lexo sim-sem-sig) sim-sem-constant)
                        (fs-assigne hypertag sim-sem-term
                                    {:head {:cat "n"}}
                                    ,(rt sim-sem-constant)
@@ -156,12 +155,3 @@
                                            :det_type "def"}}
                                    ,(rt (ll [p q] (forall? (il [x] (imp? (p x)
                                                                          (q x)))))))]))))
-
-
-(let [test-wordforms ["une" "les" "dort" "mangent" "grand" "vert" "enfant"]]
-  (doseq [[sig lexo] [[a-stx-sig a-stx->sim-sem-lexo]
-                      [a-stx-sig a-stx->ua-stx-lexo]
-                      [ua-stx-sig ua-stx->string-lexo]
-                      [string-sig string->l-string-lexo]]]
-    (test-lexicon-fn? sig (lexo-extend lexo) test-wordforms)
-    (test-lexicon-homo? sig (lexo-extend lexo) test-wordforms)))

@@ -5,21 +5,20 @@
   This is the version that uses different lexical constants for verbs
   to produce scope ambiguities."
   (:require [clojure.core.logic :as l])
-  (:use acg-clj.acg
-        acg-clj.check
-        acg-clj.convenience
-        acg-clj.lambda
-        acg-clj.utils
-        [acg-clj.termix :only [rt ptn ptnt ptnst]]
-        [acg-clj.toy-grammar :only [l-string-sig string-sig sim-sem-sig
-                                    string->l-string-lexo]]))
+  (:use (acg-clj acg
+                 convenience
+                 lambda
+                 utils
+                 [termix :only [rt ptn ptnt ptnst]]
+                 [toy-grammar :only [l-string-sig string-sig sim-sem-sig
+                                     string->l-string-lexo]])))
 
 (def stx-sig
   "A signature for a level of syntactical description which
   distinguishes between different scope readings of verbs by using
   different constants for each reading."
   {:principal-type 'S
-   :lex-typespeco (fn [hypertag type spec]
+   :lex-typespeco (fn [wordform hypertag spec type]
                     (l/conde [(fs-assigne hypertag                 type
                                           {:head {:cat "n"}}       'N
                                           {:head {:cat "adj"
@@ -44,7 +43,7 @@
   (with-sig-consts string-sig
     (l/fresh [string-constant hypertag]
              (share-lex-entryo stx-constant string-constant)
-             (sig-lexo string-sig string-constant)
+             ((sig-lexo string-sig) string-constant)
              (has-hypertago stx-constant hypertag)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))]
@@ -69,7 +68,7 @@
     (l/fresh [sim-sem-constant hypertag]
              (has-hypertago stx-constant hypertag)
              (l/conde [(share-lex-entryo stx-constant sim-sem-constant)
-                       (sig-lexo sim-sem-sig sim-sem-constant)
+                       ((sig-lexo sim-sem-sig) sim-sem-constant)
                        (fs-assigne hypertag sim-sem-term
                                    {:head {:cat "n"}}
                                    ,(rt sim-sem-constant)
@@ -80,7 +79,7 @@
                                            :trans "false"}}
                                    ,(rt (ll [S] (S (ll [x] (sim-sem-constant x))))))]
                       [(share-lex-entryo stx-constant sim-sem-constant)
-                       (sig-lexo sim-sem-sig sim-sem-constant)
+                       ((sig-lexo sim-sem-sig) sim-sem-constant)
                        (fs-matche hypertag
                                   [{:head {:cat "v"
                                            :trans "true"}}
@@ -99,10 +98,3 @@
                                            :det_type "def"}}
                                    ,(rt (ll [p q] (forall? (il [x] (imp? (p x)
                                                                          (q x)))))))]))))
-
-
-(let [test-wordforms ["une" "les" "dort" "mangent" "grand" "vert" "enfant"]]
-  (doseq [[sig lexo] [[stx-sig stx->sim-sem-lexo]
-                      [stx-sig stx->string-lexo]]]
-    (test-lexicon-fn? sig (lexo-extend lexo) test-wordforms)
-    (test-lexicon-homo? sig (lexo-extend lexo) test-wordforms)))

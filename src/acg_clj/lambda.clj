@@ -2,7 +2,7 @@
   "Lambda calculus foundations (type inference, reduction)."
   (:require [clojure.core.logic :as l]
             [clojure.core.logic.nominal :as n])
-  (:use acg-clj.utils))
+  (:use (acg-clj utils)))
 
 ;; This implementation does not put hash constraints on the values of
 ;; the context, but it can cause an occurs check stack overflow.
@@ -12,17 +12,27 @@
      (n/hash name other-name)
      (not-in-envo name rest-env)))
 
-(defn not-in-envo [name env]
+(defn not-in-envo
+  "`name' does not occur inside the typing context `env'."
+  [name env]
   (n/hash name env))
 
-(defn env-lookupo [env x t]
+(defn env-lookupo
+  "The typing context `env' assigns the type `t' to the variable named
+  by the nom `x'."
+  [env x t]
   (l/membero [x t] env))
 
-(defn env-addo [e-in x t e-out]
+(defn env-addo
+  "The typing context `e-out' is formed by taking the typing context
+  `e-in' and adding an assignment from the nom `x' to the type `t'."
+  [e-in x t e-out]
   (l/all (not-in-envo x e-in)
          (l/conso [x t] e-in e-out)))
 
-(defn encodeo [string term]
+(defn encodeo
+  "`term' is the lambda calculus encoding of the `string'."
+  [string term]
   (n/fresh [fin]
            (l/conde [(l/== string [])
                      (l/== term ['llam (n/tie fin ['var fin])])]
@@ -33,10 +43,9 @@
                                                                  rest-body])])
                               (encodeo rest-string rest-term))])))
 
-(l/defne ^{:doc "A relation ensuring that the list `l' can be formed
-  by merging the lists `l1' and `l2'. When merging two lists, any of
-  the two heads can be the head of the new list."} env-mergeo
-  [e1 e2 e]
+(l/defne ^{:doc "The list `l' can be formed by merging the lists `l1'
+  and `l2'. When merging two lists, any of the two heads can be the
+  head of the new list."} env-mergeo [e1 e2 e]
   ([[] e2 e2])
   ([[h1 . t1] [] [h1 . t1]])
   ([[[h1-n h1-t] . t1] [h2 . t2] [[h1-n h1-t] . t]]
@@ -46,11 +55,10 @@
      (not-in-envo h2-n e1)
      (env-mergeo e1 t2 t)))
 
-(l/defne ^{:doc "A relation ensuring that the lambda term `x' (in its
-  tagged representation) has type `t', given the contexts `ic' and
-  `lc' for variables provided by intuitionistic and linear
-  intuitionistic lambdas, respectively."} typeo
-  [ic lc x t]
+(l/defne ^{:doc "The lambda term `x' (in its tagged representation) has
+  type `t', given the contexts `ic' and `lc' for variables provided by
+  intuitionistic and linear intuitionistic lambdas, respectively."}
+  typeo [ic lc x t]
   ([_ [] ['const {:type t :id _}] _])
   ([_ _ ['var v] _]
      (l/conde [(l/== lc [])
@@ -80,14 +88,19 @@
                         (typeo ic [] a at)]))))
 
 (defn top-typeo
-  ""
+  "The closed lambda term `x' has type `t'."
   [x t]
   (typeo [] [] x t))
 
 
-;; The parts below are based on the work of Nada Amin.
+;; The parts below (small-step interpreter and capture-free
+;; substitution) are heavily based on the code from Nada Amin's talk
+;; on core.logic.nominal. Thanks a lot for showing me the way!
 
-(l/defne substo [e a new out] ;; out == e[a/new]
+(l/defne substo
+  "The term `out' can be produced by substituting free occurrences of
+  the nom `a' in the term `e' with the term `new' (out == e[a/new])."
+  [e a new out] ;; out == e[a/new]
   ([['const c] _ _ ['const c]])
   ([['var a] _ _ new])
   ([['var b] _ _ e]
@@ -105,7 +118,9 @@
                        (n/hash var new)
                        (substo body a new body')))))
 
-(l/defne valo [e]
+(l/defne valo
+  "`e' is a value, that is a term in beta-normal form."
+  [e]
   ([['const _]])
   ([['var _]])
   ([['app fn arg]]
@@ -121,7 +136,10 @@
                        (l/== binder (n/tie var body))
                        (valo body)))))
 
-(l/defne stepo [e o]
+(l/defne stepo
+  "The term `o' can be reached from the term `e' by performing one
+  step of beta-reduction in a left-to-right order of reduction."
+  [e o]
   ([['app fn arg] ['app fn' arg]]
      (stepo fn fn'))
   ([['app fn arg] ['app fn arg']]
@@ -143,7 +161,9 @@
                        (l/== binder' (n/tie var body'))
                        (stepo body body')))))
 
-(defn stepo* [e o]
+(defn stepo*
+  "`o' is the beta-normal form of the term `e'."
+  [e o]
   (l/conde [(valo e)
             (l/== e o)]
            [(l/fresh [i]
