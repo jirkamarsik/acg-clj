@@ -224,7 +224,7 @@
   :hierarchy #'term-type-hiero)
 
 (defn unreify-term
-  "Replaces all the reified symbols inside a term back into noms."
+  "Turns all the reified symbols inside a term back into noms."
   [term]
   (unreify-term' {} term))
 

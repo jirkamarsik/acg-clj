@@ -1,4 +1,6 @@
 (ns acg-clj.testing
+  "A namespace of functionality useful for testing your signature and
+  lexicon definitions."
   (:require [clojure.core.logic :as l]
             [clojure.set :as set]
             [clojure.test :as test])
@@ -109,10 +111,11 @@
   abstract constants in `test-consts'."
   [lexicono test-consts]
   (doseq [abs-const test-consts
-          obj-term (l/run* [obj-term]
-                           (lexicono (rt abs-const) obj-term))]
+          obj-term (map unreify-term
+                        (l/run* [obj-term]
+                                (lexicono (rt abs-const) obj-term)))]
     (let [obj-term-types (l/run* [obj-term-type]
-                                 (top-typeo (unreify-term obj-term) obj-term-type))]
+                                 (top-typeo obj-term obj-term-type))]
       (test/is (> (count obj-term-types) 0)
                {:msg "The lexicon licenses only well-typed object terms."
                 :abs-const abs-const
@@ -120,7 +123,7 @@
 
 (defn test-lexicon-homomorphism
   "Tests whether the types of the object terms assigned by `lexicono'
-  to the abstract constains in `test-consts' are images of a
+  to the abstract constants in `test-consts' are images of a
   homomorphic extension of some mapping from the atomic abstract types
   to object types."
   [lexicono test-consts]

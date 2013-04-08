@@ -63,7 +63,7 @@
            (l/== constant {:type type
                            :id id})))
 
-(defn has-nameo
+(defn has-constant-nameo
   "Accesses [:id :constant-name] in a constant."
   [constant name]
   (l/fresh [id]
@@ -103,14 +103,14 @@
                             :hypertag hypertag})))
 
 (defn has-cato
-  ""
+  "The :hypertag of `constant' has {:head {:cat `cat'}}."
   [constant cat]
   (l/fresh [hypertag]
            (has-hypertago constant hypertag)
            (retrievec hypertag {:head {:cat cat}})))
 
 (defn share-lex-entryo
-  "Ensures that the two constants have the same :lex-entry."
+  "`constant-a' and `constant-b' have the same :lex-entry."
   [constant-a constant-b]
   (l/fresh [lex-entry]
            (has-lex-entryo constant-a lex-entry)
@@ -194,7 +194,7 @@
   (let [consts (keys (:constants @(resolve signature)))]
     `(l/fresh ~(vec consts)
               ~@(for [const consts]
-                  `(l/all (has-nameo ~const '~const)
+                  `(l/all (has-constant-nameo ~const '~const)
                           ((sig-consto ~signature) ~const)))
               ~@goals)))
 
@@ -205,5 +205,5 @@
   [translation-map]
   (fn [constant translated-term]
     (l/fresh [constant-name]
-             (has-nameo constant constant-name)
+             (has-constant-nameo constant constant-name)
              (l/membero [constant-name translated-term] (seq translation-map)))))

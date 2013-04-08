@@ -6,10 +6,8 @@
   to produce scope ambiguities."
   (:require [clojure.core.logic :as l])
   (:use (acg-clj acg
-                 convenience
                  lambda
-                 utils
-                 [termix :only [rt ptn ptnt ptnst]]
+                 [termix :only [rt]]
                  [toy-grammar :only [l-string-sig string-sig sim-sem-sig
                                      string->l-string-lexo]])))
 

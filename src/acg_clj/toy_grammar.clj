@@ -3,10 +3,8 @@
   development of the toolkit."
   (:require [clojure.core.logic :as l])
   (:use (acg-clj acg
-                 convenience
                  lambda
-                 utils
-                 [termix :only [rt ptn ptnt ptnst]])))
+                 [termix :only [rt]])))
 
 (def l-string-sig
   "A signature of lambda-encoded strings. A string is a function of type

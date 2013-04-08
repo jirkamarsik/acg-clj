@@ -11,14 +11,16 @@
   (apply set/union (apply map f colls)))
 
 
-(l/defne ^{:doc "Let `f' be a binary goal encoding a
-  function (non-relational argument), then `out' is the result of
-  mapping that function on the list `in'."} mapo
-  [f in out]
-  ([_ [] []])
-  ([_ [in-h . in-t] [out-h . out-t]]
-     (f in-h out-h)
-     (mapo f in-t out-t)))
+(defn mapo
+  "Given `f', a binary goal encoding a function, returns a binary
+  relation that encodes the function (map f %)."
+  [f]
+  (fn lifted-f [in out]
+    (l/matche [in out]
+              ([[] []])
+              ([[in-h . in-t] [out-h . out-t]]
+                 (f in-h out-h)
+                 (lifted-f in-t out-t)))))
 
 (l/defne ^{:doc "The alist `al' associates the key `k' with the value
   `v'."} assoco
@@ -36,7 +38,7 @@
 (defn keyso
   "`keys' is the list of keys of the alist `alist'."
   [alist keys]
-  (mapo keyo alist keys))
+  ((mapo keyo) alist keys))
 
 
 (defn retrievec
@@ -64,6 +66,7 @@
            (l/everyg (fn [[lvar val]]
                        (l/membero val lvar))
                      @lvar-value-pairs))))
+
 
 (defn org
   "Conde as a function. Takes any number of goals and returns a goal

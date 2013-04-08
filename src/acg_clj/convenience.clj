@@ -1,4 +1,6 @@
 (ns acg-clj.convenience
+  "A namespace of convenience functions useful when playing around
+  with the library personally."
   (:require [clojure.core.logic :as l])
   (:use (acg-clj acg
                  termix)))
