@@ -12,7 +12,7 @@
                                  [ua-stx-sig ua-stx->string-lexo 'ua-stx->string]
                                  [string-sig string->l-string-lexo 'string->l-string]]]
     (testing (str "Testing lexicon " name)
-      (test-lexicon signature (lexo-extend lexo) test-wordforms))))
+      (test-lexicon signature (extend-lexg lexo) test-wordforms))))
 
 (deftest signature-tests
   (doseq [[signature name] [[a-stx-sig 'a-stx]
