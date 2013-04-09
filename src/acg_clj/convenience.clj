@@ -11,6 +11,7 @@
   []
   (use 'clojure.repl)
   (use '[clojure.pprint :only [pprint]])
+  (use '[clojure.test :only [test-ns]])
   (use 'acg-clj.acg)
   (use 'acg-clj.convenience)
   (use 'acg-clj.utils)
