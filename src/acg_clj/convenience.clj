@@ -5,6 +5,20 @@
   (:use (acg-clj acg
                  termix)))
 
+(defn use-repl-stuff
+  "Require and refer a *lot* of stuff (basically the entire toolkit
+  codebase, plus clojure.repl and pprint). Handy for interactive use."
+  []
+  (use 'clojure.repl)
+  (use '[clojure.pprint :only [pprint]])
+  (use 'acg-clj.acg)
+  (use 'acg-clj.convenience)
+  (use 'acg-clj.utils)
+  (use 'acg-clj.lambda)
+  (use 'acg-clj.termix)
+  (use 'acg-clj.testing)
+  (use 'acg-clj.lexicon))
+
 (defmacro with-words
   "Expects a signature and a vector of bindings in which names are
   bound to wordforms. Binds the names to constants having the
