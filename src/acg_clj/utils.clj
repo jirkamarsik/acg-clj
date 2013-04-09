@@ -96,3 +96,83 @@
        (l/fresh [y]
                 ((apply compg goals) x y)
                 (goal y z)))))
+
+
+(defn accessor-name-for-key
+  "Returns the name of the accessor relation for accessing the field
+  stored under the keyword `key'.
+
+  E.g. :type -> has-typeo"
+  [key]
+  (symbol (str "has-" (name key) "o")))
+
+(defn accessor-def
+  "Constructs the definition of an accessor relation. `key-path' is a
+  stack of keywords describing the path taken from the root of the
+  object model to the field being retrieved. `all-keys' is a
+  collection of all the keys defined in the object found at the
+  `key-path' (including the top of `key-path', but also possibly other
+  keys).
+
+  E.g. (accessor-def [:id :spec] [:spec :lex-entry]) ->
+       (defn has-speco
+         \"Accesses [:id :spec] in a constant.\"
+         [constant spec]
+         (l/fresh [id lex-entry]
+                  (has-ido constant id)
+                  (l/== id {:spec spec
+                            :lex-entry lex-entry})))"
+  [key-path all-keys]
+  (let [symbolize (fn [keyword] (symbol (name keyword)))
+        key (peek key-path)
+        ancestors (pop key-path)
+        parent (peek ancestors)]
+    `(defn ~(accessor-name-for-key key)
+       ~(str "Accesses " key-path " in a constant.")
+       [~'constant ~(symbolize key)]
+       ~(if (seq ancestors)
+          `(l/fresh ~(into [(symbolize parent)]
+                           (map symbolize (remove #{key} all-keys)))
+                    (~(accessor-name-for-key parent)
+                     ~'constant ~(symbolize parent))
+                    (l/== ~(symbolize parent)
+                          ~(for-map [k all-keys] k (symbolize k))))
+          `(l/fresh ~(vec (map symbolize (remove #{key} all-keys)))
+                    (l/== ~'constant
+                          ~(for-map [k all-keys] k (symbolize k))))))))
+
+(defn accessor-defs
+  "Constructs a sequence of accessor relation definitions. `schema'
+  describes the shape of the object model, `key-path' is a stack of
+  field names on the path from the root of the top of the object model
+  to the level of `schema'. If you are calling this function from
+  outside, `key-path' should probably be [].
+
+  For more information on the `schema', see `defaccessors'."
+  [key-path schema]
+  (cond (sequential? schema)
+        ,(mapcat (partial accessor-defs key-path) schema)
+        (map? schema)
+        ,(apply concat (for [[key subschema] schema]
+                         (cons (accessor-def (conj key-path key) (keys schema))
+                               (accessor-defs (conj key-path key) subschema))))))
+
+(defmacro defaccessors
+  "Defines accessor relations for retrieving values in a nested object
+  model.
+
+  E.g. (defaccessors '{:type _
+                       :id [{:lex-entry {:wordform _
+                                         :hypertag _}
+                             :spec _}
+                            {:constant-name _}]})
+
+  Maps represent nested objects, vectors represent
+  alternatives (union), anything else is ignored.
+
+  This will define binary relations like has-ido, has-speco and
+  has-constant-nameo, which state that some object `%1' that
+  corresponds to this schema has the value `%2' in the field mentioned
+  by the relation's name."
+  [schema]
+  `(do ~@(accessor-defs [] schema)))

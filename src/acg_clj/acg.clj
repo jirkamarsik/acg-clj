@@ -41,66 +41,13 @@
     (l/conde [((sig-consto signature) constant)]
              [((sig-lexo signature) constant)])))
 
-;; Maybe generate the following "accessor" relations by some magic
-;; macro from the schema below.
-'{:type _
-  :id [{:constant-name _}
-       {:lex-entry {:wordform _
-                    :hypertag _}
-        :spec _}]}
+;; 
+(defaccessors {:type _
+               :id [{:constant-name _}
+                    {:lex-entry {:wordform _
+                                 :hypertag _}
+                     :spec _}]})
 
-(defn has-typeo
-  "Accesses [:type] in a constant."
-  [constant type]
-  (l/fresh [id]
-           (l/== constant {:type type
-                           :id id})))
-
-(defn has-ido
-  "Accesses [:id] in a constant."
-  [constant id]
-  (l/fresh [type]
-           (l/== constant {:type type
-                           :id id})))
-
-(defn has-constant-nameo
-  "Accesses [:id :constant-name] in a constant."
-  [constant name]
-  (l/fresh [id]
-           (has-ido constant id)
-           (l/== id {:constant-name name})))
-
-(defn has-lex-entryo
-  "Accesses [:id :lex-entry] in a constant."
-  [constant lex-entry]
-  (l/fresh [id spec]
-           (has-ido constant id)
-           (l/== id {:lex-entry lex-entry
-                     :spec spec})))
-
-(defn has-speco
-  "Accesses [:id :spec] in a constant."
-  [constant spec]
-  (l/fresh [id lex-entry]
-           (has-ido constant id)
-           (l/== id {:lex-entry lex-entry
-                     :spec spec})))
-
-(defn has-wordformo
-  "Accesses [:id :lex-entry :wordform] in a constant."
-  [constant wordform]
-  (l/fresh [lex-entry hypertag]
-           (has-lex-entryo constant lex-entry)
-           (l/== lex-entry {:wordform wordform
-                            :hypertag hypertag})))
-
-(defn has-hypertago
-  "Accesses [:id :lex-entry :hypertag] in a constant."
-  [constant hypertag]
-  (l/fresh [lex-entry wordform]
-           (has-lex-entryo constant lex-entry)
-           (l/== lex-entry {:wordform wordform
-                            :hypertag hypertag})))
 
 (defn has-cato
   "The :hypertag of `constant' has {:head {:cat `cat'}}."
