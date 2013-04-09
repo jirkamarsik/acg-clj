@@ -1,11 +1,11 @@
 (ns acg-clj.lambda
   "Lambda calculus foundations (type inference, reduction)."
   (:require [clojure.core.logic :as l]
-            [clojure.core.logic.nominal :as n])
-  (:use (acg-clj utils)))
+            [clojure.core.logic.nominal :as n]))
 
 ;; This implementation does not put hash constraints on the values of
-;; the context, but it can cause an occurs check stack overflow.
+;; the context, but it can cause an occurs check stack overflow (TODO:
+;; investigate and potentially file a bug).
 #_(l/defne not-in-envo [name env]
   ([_ []])
   ([_ [[other-name _] . rest-env]]

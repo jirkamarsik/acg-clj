@@ -19,8 +19,8 @@
           (l/conde [(l/fresh [wordform]
                              (has-wordformo const wordform)
                              (l/membero wordform wordforms)
-                             ((sig-lexo signature) const))]
-                   [((sig-consto signature) const)])))
+                             ((sig-lexg signature) const))]
+                   [((sig-constg signature) const)])))
 
 (defn consts-with-lex-image
   "Finds all the constants belonging to `signature' that have some

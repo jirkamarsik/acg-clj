@@ -11,7 +11,7 @@
   (apply set/union (apply map f colls)))
 
 
-(defn mapo
+(defn mapg
   "Given `f', a binary goal encoding a function, returns a binary
   relation that encodes the function (map f %)."
   [f]
@@ -38,7 +38,7 @@
 (defn keyso
   "`keys' is the list of keys of the alist `alist'."
   [alist keys]
-  ((mapo keyo) alist keys))
+  ((mapg keyo) alist keys))
 
 
 (defn retrievec
@@ -161,11 +161,11 @@
   "Defines accessor relations for retrieving values in a nested object
   model.
 
-  E.g. (defaccessors '{:type _
-                       :id [{:lex-entry {:wordform _
-                                         :hypertag _}
-                             :spec _}
-                            {:constant-name _}]})
+  E.g. (defaccessors {:type _
+                      :id [{:lex-entry {:wordform _
+                                        :hypertag _}
+                            :spec _}
+                           {:constant-name _}]})
 
   Maps represent nested objects, vectors represent
   alternatives (union), anything else is ignored.

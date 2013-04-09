@@ -11,29 +11,29 @@
   '[-> Sigma Sigma]. String concatenation is performed by function
   composition."
   {:principal-type '[-> Sigma Sigma]
-   :lex-typespeco (unityper '[-> Sigma Sigma])})
+   :lex-typespeco (unitypedg '[-> Sigma Sigma])})
 
 (def string-sig
   "A signature of the algebra of strings with a binary concatenation
   operator."
   {:principal-type 'Str
    :constants '{++ [-> Str [-> Str Str]]}
-   :lex-typespeco (unityper 'Str)})
+   :lex-typespeco (unitypedg 'Str)})
 
 (def ua-stx-sig
   "A signature of syntactic descriptions. On this level, scope
   ambiguities should not become syntactic ambiguities."
   {:principal-type 'S
-   :lex-typespeco (ht->type-mapper '{{:head {:cat "n"}}       N
-                                     {:head {:cat "adj"
-                                             :order "left"}}  [-> N N]
-                                     {:head {:cat "adj"
-                                             :order "right"}} [-> N N]
-                                     {:head {:cat "det"}}     [-> N NP]
-                                     {:head {:cat "v"
-                                             :trans "false"}} [-> NP S]
-                                     {:head {:cat "v"
-                                             :trans "true"}}  [-> NP [-> NP S]]})})
+   :lex-typespeco (ht->typeg '{{:head {:cat "n"}}       N
+                               {:head {:cat "adj"
+                                       :order "left"}}  [-> N N]
+                               {:head {:cat "adj"
+                                       :order "right"}} [-> N N]
+                               {:head {:cat "det"}}     [-> N NP]
+                               {:head {:cat "v"
+                                       :trans "false"}} [-> NP S]
+                               {:head {:cat "v"
+                                       :trans "true"}}  [-> NP [-> NP S]]})})
 
 (def sim-sem-sig
   "A signature for simple semantic representations. Contains the usual
@@ -47,28 +47,28 @@
                 bottom  T
                 forall? [-> [=> E T] T]
                 exists? [-> [=> E T] T]}
-   :lex-typespeco (ht->type-mapper '{{:head {:cat "n"}}       [=> E T]
-                                     {:head {:cat "adj"}}     [-> E T]
-                                     {:head {:cat "v"
-                                             :trans "false"}} [-> E T]
-                                     {:head {:cat "v"
-                                             :trans "true"}}  [-> E [-> E T]]})})
+   :lex-typespeco (ht->typeg '{{:head {:cat "n"}}       [=> E T]
+                               {:head {:cat "adj"}}     [-> E T]
+                               {:head {:cat "v"
+                                       :trans "false"}} [-> E T]
+                               {:head {:cat "v"
+                                       :trans "true"}}  [-> E [-> E T]]})})
 
 (def a-stx-sig
   "A signature for a level of syntactical description which
   distinguishes between different scopes of verb readings by
   type-raising quantified noun phrases."
   {:principal-type 'S
-   :lex-typespeco (ht->type-mapper '{{:head {:cat "n"}}       N
-                                     {:head {:cat "adj"
-                                             :order "left"}}  [-> N N]
-                                     {:head {:cat "adj"
-                                             :order "right"}} [-> N N]
-                                     {:head {:cat "v"
-                                             :trans "false"}} [-> NP S]
-                                     {:head {:cat "v"
-                                             :trans "true"}}  [-> NP [-> NP S]]
-                                     {:head {:cat "det"}}     [-> N [-> [-> NP S] S]]})})
+   :lex-typespeco (ht->typeg '{{:head {:cat "n"}}       N
+                               {:head {:cat "adj"
+                                       :order "left"}}  [-> N N]
+                               {:head {:cat "adj"
+                                       :order "right"}} [-> N N]
+                               {:head {:cat "v"
+                                       :trans "false"}} [-> NP S]
+                               {:head {:cat "v"
+                                       :trans "true"}}  [-> NP [-> NP S]]
+                               {:head {:cat "det"}}     [-> N [-> [-> NP S] S]]})})
 
 
 (defn string->l-string-lexo
@@ -78,9 +78,9 @@
   [string-constant l-string-term]
   (l/conde [(l/fresh [l-string-constant]
                      (share-lex-entryo string-constant l-string-constant)
-                     ((sig-lexo l-string-sig) l-string-constant)
+                     ((sig-lexg l-string-sig) l-string-constant)
                      (l/== l-string-term (rt l-string-constant)))]
-           [((const-lexicon {'++ (rt (ll [x y t] (x (y t))))})
+           [((const-lexicong {'++ (rt (ll [x y t] (x (y t))))})
              string-constant l-string-term)]))
 
 (defn ua-stx->string-lexo
@@ -90,10 +90,11 @@
   (with-sig-consts string-sig
     (l/fresh [string-constant hypertag]
              (share-lex-entryo ua-stx-constant string-constant)
-             ((sig-lexo string-sig) string-constant)
+             ((sig-lexg string-sig) string-constant)
              (has-hypertago ua-stx-constant hypertag)
              (let [prefix (rt (ll [x] (++ string-constant x)))
-                   suffix (rt (ll [x] (++ x string-constant)))]
+                   suffix (rt (ll [x] (++ x string-constant)))
+                   infix (rt (ll [x y] (++ (++ x string-constant) y)))]
                (fs-assigne hypertag                 string-term
                            {:head {:cat "n"}}       (rt string-constant)
                            {:head {:cat "adj"
@@ -104,9 +105,7 @@
                            {:head {:cat "v"
                                    :trans "false"}} suffix
                            {:head {:cat "v"
-                                   :trans "true"}} (rt (ll [x y]
-                                                           (++ (++ x string-constant)
-                                                               y))))))))
+                                   :trans "true"}}  infix)))))
 
 (defn a-stx->ua-stx-lexo
   "A lexicon from the a-stx signature to the ua-stx signature.
@@ -114,7 +113,7 @@
   [a-stx-constant ua-stx-term]
   (l/fresh [ua-stx-constant hypertag]
            (share-lex-entryo a-stx-constant ua-stx-constant)
-           ((sig-lexo ua-stx-sig) ua-stx-constant)
+           ((sig-lexg ua-stx-sig) ua-stx-constant)
            (has-hypertago a-stx-constant hypertag)
            (fs-assigne hypertag ua-stx-term
                        {:head {:cat "n"}}
@@ -135,7 +134,7 @@
     (l/fresh [sim-sem-constant hypertag]
              (has-hypertago a-stx-constant hypertag)
              (l/conde [(share-lex-entryo a-stx-constant sim-sem-constant)
-                       ((sig-lexo sim-sem-sig) sim-sem-constant)
+                       ((sig-lexg sim-sem-sig) sim-sem-constant)
                        (fs-assigne hypertag sim-sem-term
                                    {:head {:cat "n"}}
                                    ,(rt sim-sem-constant)

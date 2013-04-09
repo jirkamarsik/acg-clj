@@ -19,11 +19,11 @@
      (l/fresh ~(vec (take-nth 2 word-bindings))
               (l/everyg (fn [[c# w#]]
                           (l/all (has-wordformo c# w#)
-                                 ((sig-lexo sig#) c#)))
+                                 ((sig-lexg sig#) c#)))
                         (partition 2 ~word-bindings))
               ~@goals)))
 
-(defn term-in-sigo
+(defn term-in-sigg
   "A useful tool for expressing terms with lexical constants by giving
   their wordforms. Given a signature `sig' and an AST of a lambda `term',
   returns a unary relation that unifies its argument with `term' where
@@ -44,25 +44,25 @@
                                    term)]
       (l/all (l/everyg (fn [[c w]]
                          (l/all (has-wordformo c w)
-                                ((sig-lexo sig) c)))
+                                ((sig-lexg sig) c)))
                        (seq @lvar-string-map))
              (l/== out lvar-term)))))
 
-(defmacro rt-in-sigo
-  "A combination of term-in-sigo, rt and with-sig-consts for the
+(defmacro rt-in-sigg
+  "A combination of term-in-sigg, rt and with-sig-consts for the
   ultimate comfort in typing down terms. Lets you write `term' in the
   human-readable notation, referring to lexical constants of `sig' by
   their wordforms and to the extra-lexical constants by their symbolic
   names. Returns a relation that unifies its argument with the
   matched terms.
 
-  E.g. ((rt-in-sigo sim-sem-sig
+  E.g. ((rt-in-sigg sim-sem-sig
                     (il [x] (and? (\"rouge\" x) (\"pomme\" x))))
         term))"
   [sig term]
   `(fn [out#]
      (with-sig-consts ~sig
-       ((term-in-sigo ~sig (rt ~term)) out#))))
+       ((term-in-sigg ~sig (rt ~term)) out#))))
 
 
 (defn drop-constraints
