@@ -89,9 +89,9 @@
 
 
 (defn unitypedr
-  "Returns a :lex-typespeco (relation associating a hypertag with a
-  type and specifier), that always assigns the type `unitype' and a
-  nil spec."
+  "Returns a :lex-typespeco (a relation linking a wordform, a
+  hypertag, a specifier and a type), that always assigns the type
+  `unitype' and a nil spec."
   [unitype]
   (fn [wordform hypertag spec type]
     (l/all (l/== type unitype)
@@ -117,7 +117,7 @@
   terms according to the matched pattern, fs-assigne can be used
   directly. See the example for syntax.
 
-  Ex: (fs-assigne hypertag out
+  Ex: (fs-assigne hypertag             out
                   {:head {:cat \"v\"}} :verb
                   {:head {:cat \"n\"}} :noun)"
   [fs target & pattern-value-pairs]
@@ -140,7 +140,7 @@
   *fresh* scope with variables for all the extra-lexical constants of
   the given signature."
   [signature & goals]
-  (let [consts (keys (:constants @(resolve signature)))]
+  (let [consts (keys (:constants (eval signature)))]
     `(l/fresh ~(vec consts)
               ~@(for [const consts]
                   `(l/all (has-constant-nameo ~const '~const)
@@ -152,7 +152,7 @@
   according to their names (keys of the `translation-map') to the
   target terms (values of the `translation-map')."
   [translation-map]
-  (fn [constant translated-term]
-    (l/fresh [constant-name]
-             (has-constant-nameo constant constant-name)
-             (l/membero [constant-name translated-term] (seq translation-map)))))
+  (fn [abs-const obj-term]
+    (l/fresh [abs-const-name]
+             (has-constant-nameo abs-const abs-const-name)
+             (l/membero [abs-const-name obj-term] (seq translation-map)))))

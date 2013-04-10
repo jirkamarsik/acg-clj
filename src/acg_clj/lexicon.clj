@@ -20,7 +20,7 @@
 (defn read-lexicon
   "Given the lines of a Lexicomp dump file, produces a lexicon in the
   form of a map from wordforms to vectors of possible
-  hypertags (enriched with head.wordform and head.lemma)."
+  hypertags (enriched with head.lemma)."
   [lex-lines]
   (persistent!
    (reduce (fn [lex [wordform hypertag]]
@@ -51,7 +51,7 @@
   [x l]
   (if (seq l)
     (l/conde [(l/== x (first l))]
-             [(membero! x (next l))])
+             [(membero! x (rest l))])
     l/fail))
 
 ;; TODO: The lexicon should undo the factorization done using
