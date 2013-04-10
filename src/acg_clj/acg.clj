@@ -8,7 +8,7 @@
                  utils)
         plumbing.core))
 
-(defn sig-constg
+(defn sig-constr
   "Given `signature', returns a relation saying that `constant' is an
   extra-lexical (explicitly declared) constant of the signature."
   [signature]
@@ -18,7 +18,7 @@
                              :id {:constant-name name}})
              (l/membero [name type] (seq (:constants signature))))))
 
-(defn sig-lexg
+(defn sig-lexr
   "Given `signature', returns a relation saying that `constant' is a
   lexical (induced from lexicon) constant of the signature."
   [signature]
@@ -33,13 +33,13 @@
                ((:lex-typespeco signature) wordform hypertag spec type))
       l/fail)))
 
-(defn sigg
+(defn sigr
   "Given `signature', returns a relation saying that `constant' is a
   constant of the signature."
   [signature]
   (fn [constant]
-    (l/conde [((sig-constg signature) constant)]
-             [((sig-lexg signature) constant)])))
+    (l/conde [((sig-constr signature) constant)]
+             [((sig-lexr signature) constant)])))
 
 ;; Define accessor relations for all the fields of the constant
 ;; objects.
@@ -65,11 +65,12 @@
            (has-lex-entryo constant-b lex-entry)))
 
 
-(defn extend-lexg [lexo]
+(defn extend-lexor
   "Given a lexicon (a binary relation encoding a mapping from
   constants over the abstract signature to terms over the object
   signature), returns its homomorphic extension to terms (a binary
   relation encoding a mapping from abstract terms to object terms)."
+  [lexo]
   (fn extended-lexo [abs-term obj-term]
     (l/matche [abs-term obj-term]
               ([['const abs-c] _]
@@ -87,7 +88,7 @@
                  (extended-lexo abs-a obj-a)))))
 
 
-(defn unitypedg
+(defn unitypedr
   "Returns a :lex-typespeco (relation associating a hypertag with a
   type and specifier), that always assigns the type `unitype' and a
   nil spec."
@@ -124,7 +125,7 @@
          (for [[pattern value] (partition 2 pattern-value-pairs)]
            [pattern (l/== target value)])))
 
-(defn ht->typeg
+(defn ht->typer
   "Returns a :lex-typespeco that tries to match the hypertag to the
   keys of the `patterns' map as in fs-matche and fs-assigne and
   assigns the respective values of the patterns as types. The
@@ -143,10 +144,10 @@
     `(l/fresh ~(vec consts)
               ~@(for [const consts]
                   `(l/all (has-constant-nameo ~const '~const)
-                          ((sig-constg ~signature) ~const)))
+                          ((sig-constr ~signature) ~const)))
               ~@goals)))
 
-(defn const-lexicong
+(defn const-lexiconr
   "Returns a lexicon that simply maps (extra-lexical) constants
   according to their names (keys of the `translation-map') to the
   target terms (values of the `translation-map')."

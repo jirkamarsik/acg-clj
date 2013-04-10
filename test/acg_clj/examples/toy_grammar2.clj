@@ -42,7 +42,7 @@
   (with-sig-consts string-sig
     (l/fresh [string-constant hypertag]
              (share-lex-entryo stx-constant string-constant)
-             ((sig-lexg string-sig) string-constant)
+             ((sig-lexr string-sig) string-constant)
              (has-hypertago stx-constant hypertag)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))
@@ -68,7 +68,7 @@
     (l/fresh [sim-sem-constant hypertag]
              (has-hypertago stx-constant hypertag)
              (l/conde [(share-lex-entryo stx-constant sim-sem-constant)
-                       ((sig-lexg sim-sem-sig) sim-sem-constant)
+                       ((sig-lexr sim-sem-sig) sim-sem-constant)
                        (fs-assigne hypertag sim-sem-term
                                    {:head {:cat "n"}}
                                    ,(rt sim-sem-constant)
@@ -79,7 +79,7 @@
                                            :trans "false"}}
                                    ,(rt (ll [S] (S (ll [x] (sim-sem-constant x))))))]
                       [(share-lex-entryo stx-constant sim-sem-constant)
-                       ((sig-lexg sim-sem-sig) sim-sem-constant)
+                       ((sig-lexr sim-sem-sig) sim-sem-constant)
                        (fs-matche hypertag
                                   [{:head {:cat "v"
                                            :trans "true"}}

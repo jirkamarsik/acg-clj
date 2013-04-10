@@ -11,7 +11,7 @@
   (apply set/union (apply map f colls)))
 
 
-(defn mapg
+(defn mapr
   "Given `f', a binary goal encoding a function, returns a binary
   relation that encodes the function (map f %)."
   [f]
@@ -38,7 +38,7 @@
 (defn keyso
   "`keys' is the list of keys of the alist `alist'."
   [alist keys]
-  ((mapg keyo) alist keys))
+  ((mapr keyo) alist keys))
 
 
 (defn retrievec

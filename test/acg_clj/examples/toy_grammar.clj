@@ -11,20 +11,20 @@
   '[-> Sigma Sigma]. String concatenation is performed by function
   composition."
   {:principal-type '[-> Sigma Sigma]
-   :lex-typespeco (unitypedg '[-> Sigma Sigma])})
+   :lex-typespeco (unitypedr '[-> Sigma Sigma])})
 
 (def string-sig
   "A signature of the algebra of strings with a binary concatenation
   operator."
   {:principal-type 'Str
    :constants '{++ [-> Str [-> Str Str]]}
-   :lex-typespeco (unitypedg 'Str)})
+   :lex-typespeco (unitypedr 'Str)})
 
 (def ua-stx-sig
   "A signature of syntactic descriptions. On this level, scope
   ambiguities should not become syntactic ambiguities."
   {:principal-type 'S
-   :lex-typespeco (ht->typeg '{{:head {:cat "n"}}       N
+   :lex-typespeco (ht->typer '{{:head {:cat "n"}}       N
                                {:head {:cat "adj"
                                        :order "left"}}  [-> N N]
                                {:head {:cat "adj"
@@ -47,7 +47,7 @@
                 bottom  T
                 forall? [-> [=> E T] T]
                 exists? [-> [=> E T] T]}
-   :lex-typespeco (ht->typeg '{{:head {:cat "n"}}       [=> E T]
+   :lex-typespeco (ht->typer '{{:head {:cat "n"}}       [=> E T]
                                {:head {:cat "adj"}}     [-> E T]
                                {:head {:cat "v"
                                        :trans "false"}} [-> E T]
@@ -59,7 +59,7 @@
   distinguishes between different scopes of verb readings by
   type-raising quantified noun phrases."
   {:principal-type 'S
-   :lex-typespeco (ht->typeg '{{:head {:cat "n"}}       N
+   :lex-typespeco (ht->typer '{{:head {:cat "n"}}       N
                                {:head {:cat "adj"
                                        :order "left"}}  [-> N N]
                                {:head {:cat "adj"
@@ -78,9 +78,9 @@
   [string-constant l-string-term]
   (l/conde [(l/fresh [l-string-constant]
                      (share-lex-entryo string-constant l-string-constant)
-                     ((sig-lexg l-string-sig) l-string-constant)
+                     ((sig-lexr l-string-sig) l-string-constant)
                      (l/== l-string-term (rt l-string-constant)))]
-           [((const-lexicong {'++ (rt (ll [x y t] (x (y t))))})
+           [((const-lexiconr {'++ (rt (ll [x y t] (x (y t))))})
              string-constant l-string-term)]))
 
 (defn ua-stx->string-lexo
@@ -90,7 +90,7 @@
   (with-sig-consts string-sig
     (l/fresh [string-constant hypertag]
              (share-lex-entryo ua-stx-constant string-constant)
-             ((sig-lexg string-sig) string-constant)
+             ((sig-lexr string-sig) string-constant)
              (has-hypertago ua-stx-constant hypertag)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))
@@ -113,7 +113,7 @@
   [a-stx-constant ua-stx-term]
   (l/fresh [ua-stx-constant hypertag]
            (share-lex-entryo a-stx-constant ua-stx-constant)
-           ((sig-lexg ua-stx-sig) ua-stx-constant)
+           ((sig-lexr ua-stx-sig) ua-stx-constant)
            (has-hypertago a-stx-constant hypertag)
            (fs-assigne hypertag ua-stx-term
                        {:head {:cat "n"}}
@@ -134,7 +134,7 @@
     (l/fresh [sim-sem-constant hypertag]
              (has-hypertago a-stx-constant hypertag)
              (l/conde [(share-lex-entryo a-stx-constant sim-sem-constant)
-                       ((sig-lexg sim-sem-sig) sim-sem-constant)
+                       ((sig-lexr sim-sem-sig) sim-sem-constant)
                        (fs-assigne hypertag sim-sem-term
                                    {:head {:cat "n"}}
                                    ,(rt sim-sem-constant)
