@@ -1,4 +1,4 @@
-(ns acg-clj.toy-grammar2
+(ns acg-clj.examples.toy-grammar2
   "A toy grammar of French based on our lexicon, used to drive the
   development of the toolkit.
 
@@ -7,9 +7,9 @@
   (:require [clojure.core.logic :as l])
   (:use (acg-clj acg
                  lambda
-                 [termix :only [rt]]
-                 [toy-grammar :only [l-string-sig string-sig sim-sem-sig
-                                     string->l-string-lexo]])))
+                 [termix :only [rt]])
+        [acg-clj.examples.toy-grammar :only [l-string-sig string-sig sim-sem-sig
+                                             string->l-string-lexo]]))
 
 (def stx-sig
   "A signature for a level of syntactical description which

@@ -1,4 +1,4 @@
-(ns acg-clj.toy-grammar
+(ns acg-clj.examples.toy-grammar
   "A toy grammar of French based on our lexicon, used to drive the
   development of the toolkit."
   (:require [clojure.core.logic :as l])

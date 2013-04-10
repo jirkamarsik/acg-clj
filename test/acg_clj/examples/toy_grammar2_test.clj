@@ -1,6 +1,6 @@
-(ns acg-clj.toy-grammar2-test
+(ns acg-clj.examples.toy-grammar2-test
   (:use clojure.test
-        acg-clj.toy-grammar2
+        acg-clj.examples.toy-grammar2
         acg-clj.acg
         acg-clj.testing))
 
