@@ -4,8 +4,9 @@
 
   This is the version that uses different lexical constants for verbs
   to produce scope ambiguities."
+  (:refer-clojure :exclude [->])
   (:require [clojure.core.logic :as l])
-  (:use (acg-clj acg
+  (:use (acg-clj [acg :rename {--> ->, ==> =>}]
                  lambda
                  [termix :only [rt]])
         [acg-clj.examples.toy-grammar :only [l-string-sig string-sig sim-sem-sig
@@ -20,17 +21,17 @@
                     (l/conde [(fs-assigne hypertag                 type
                                           {:head {:cat "n"}}       'N
                                           {:head {:cat "adj"
-                                                  :order "left"}}  '[-> N N]
+                                                  :order "left"}}  (-> 'N 'N)
                                           {:head {:cat "adj"
-                                                  :order "right"}} '[-> N N]
+                                                  :order "right"}} (-> 'N 'N)
                                           {:head {:cat "v"
-                                                  :trans "false"}} '[-> NP S]
-                                          {:head {:cat "det"}}     '[-> N NP])
+                                                  :trans "false"}} (-> 'NP 'S)
+                                          {:head {:cat "det"}}     (-> 'N 'NP))
                               (l/== spec nil)]
                              [(fs-matche hypertag
                                          [{:head {:cat "v"
                                                   :trans "true"}}
-                                          (l/== type '[-> NP [-> NP S]])
+                                          (l/== type (-> 'NP 'NP 'S))
                                           (l/membero spec [{:scope :subject}
                                                            {:scope :object}])])]))})
 

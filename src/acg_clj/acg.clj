@@ -49,6 +49,29 @@
                                  :hypertag _}
                      :spec _}]})
 
+(defn mk-arrow-type
+  "Given an arrow type constructor `arrow' and a series of
+  argument/result types `arg-type & more-types', produces the type
+  [arrow arg-type [arrow (first more-types) [arrow ...]]]."
+  [arrow arg-type & more-types]
+  (if (seq more-types)
+    [arrow arg-type (apply mk-arrow-type arrow more-types)]
+    arg-type))
+
+(def -->
+  "Syntactic sugar for writing down arrow types that consume a series
+  of arguments.
+
+  E.g. (--> 'NP 'NP 'S)
+       ;=> [-> NP [-> NP S]]"
+  (partial mk-arrow-type '->))
+
+(def ==>
+  "Same as `-->', but for the non-linear implication types.
+
+  E.g. (==> 'E 'E 'T)
+       ;=> [=> E [=> E T]]"
+  (partial mk-arrow-type '=>))
 
 (defn has-cato
   "The :hypertag of `constant' has {:head {:cat `cat'}}."

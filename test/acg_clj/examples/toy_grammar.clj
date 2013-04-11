@@ -1,8 +1,9 @@
 (ns acg-clj.examples.toy-grammar
   "A toy grammar of French based on our lexicon, used to drive the
   development of the toolkit."
+  (:refer-clojure :exclude [->])
   (:require [clojure.core.logic :as l])
-  (:use (acg-clj acg
+  (:use (acg-clj [acg :rename {--> ->, ==> =>}]
                  lambda
                  [termix :only [rt]])))
 
@@ -10,65 +11,65 @@
   "A signature of lambda-encoded strings. A string is a function of type
   '[-> Sigma Sigma]. String concatenation is performed by function
   composition."
-  {:principal-type '[-> Sigma Sigma]
-   :lex-typespeco (unitypedr '[-> Sigma Sigma])})
+  {:principal-type (-> 'Sigma 'Sigma)
+   :lex-typespeco (unitypedr (-> 'Sigma 'Sigma))})
 
 (def string-sig
   "A signature of the algebra of strings with a binary concatenation
   operator."
   {:principal-type 'Str
-   :constants '{++ [-> Str [-> Str Str]]}
+   :constants {'++ (-> 'Str 'Str 'Str)}
    :lex-typespeco (unitypedr 'Str)})
 
 (def ua-stx-sig
   "A signature of syntactic descriptions. On this level, scope
   ambiguities should not become syntactic ambiguities."
   {:principal-type 'S
-   :lex-typespeco (ht->typer '{{:head {:cat "n"}}       N
-                               {:head {:cat "adj"
-                                       :order "left"}}  [-> N N]
-                               {:head {:cat "adj"
-                                       :order "right"}} [-> N N]
-                               {:head {:cat "det"}}     [-> N NP]
-                               {:head {:cat "v"
-                                       :trans "false"}} [-> NP S]
-                               {:head {:cat "v"
-                                       :trans "true"}}  [-> NP [-> NP S]]})})
+   :lex-typespeco (ht->typer {{:head {:cat "n"}}       'N
+                              {:head {:cat "adj"
+                                      :order "left"}}  (-> 'N 'N)
+                              {:head {:cat "adj"
+                                      :order "right"}} (-> 'N 'N)
+                              {:head {:cat "det"}}     (-> 'N 'NP)
+                              {:head {:cat "v"
+                                      :trans "false"}} (-> 'NP 'S)
+                              {:head {:cat "v"
+                                      :trans "true"}}  (-> 'NP 'NP 'S)})})
 
 (def sim-sem-sig
   "A signature for simple semantic representations. Contains the usual
   logical furniture and predicates for the lexical items."
   {:principal-type 'T
-   :constants '{and?    [-> T [-> T T]]
-                or?     [-> T [-> T T]]
-                not?    [-> T T]
-                imp?    [-> T [-> T T]]
-                top     T
-                bottom  T
-                forall? [-> [=> E T] T]
-                exists? [-> [=> E T] T]}
-   :lex-typespeco (ht->typer '{{:head {:cat "n"}}       [=> E T]
-                               {:head {:cat "adj"}}     [-> E T]
-                               {:head {:cat "v"
-                                       :trans "false"}} [-> E T]
-                               {:head {:cat "v"
-                                       :trans "true"}}  [-> E [-> E T]]})})
+   :constants {'and?    (-> 'T 'T 'T)
+               'or?     (-> 'T 'T 'T)
+               'not?    (-> 'T 'T)
+               'imp?    (-> 'T 'T 'T)
+               'top     'T
+               'bottom  'T
+               'forall? (-> (=> 'E 'T) 'T)
+               'exists? (-> (=> 'E 'T) 'T)}
+   :lex-typespeco (ht->typer {{:head {:cat "n"}}       (=> 'E 'T)
+                              {:head {:cat "adj"}}     (-> 'E 'T)
+                              {:head {:cat "v"
+                                      :trans "false"}} (-> 'E 'T)
+                              {:head {:cat "v"
+                                      :trans "true"}}  (-> 'E 'E 'T)})})
 
 (def a-stx-sig
   "A signature for a level of syntactical description which
   distinguishes between different scopes of verb readings by
   type-raising quantified noun phrases."
   {:principal-type 'S
-   :lex-typespeco (ht->typer '{{:head {:cat "n"}}       N
-                               {:head {:cat "adj"
-                                       :order "left"}}  [-> N N]
-                               {:head {:cat "adj"
-                                       :order "right"}} [-> N N]
-                               {:head {:cat "v"
-                                       :trans "false"}} [-> NP S]
-                               {:head {:cat "v"
-                                       :trans "true"}}  [-> NP [-> NP S]]
-                               {:head {:cat "det"}}     [-> N [-> [-> NP S] S]]})})
+   :lex-typespeco (ht->typer {{:head {:cat "n"}}       'N
+                              {:head {:cat "adj"
+                                      :order "left"}}  (-> 'N 'N)
+                              {:head {:cat "adj"
+                                      :order "right"}} (-> 'N 'N)
+                              {:head {:cat "v"
+                                      :trans "false"}} (-> 'NP 'S)
+                              {:head {:cat "v"
+                                      :trans "true"}}  (-> 'NP 'NP 'S)
+                              {:head {:cat "det"}}     (-> 'N (-> 'NP 'S) 'S)})})
 
 
 (defn string->l-string-lexo
