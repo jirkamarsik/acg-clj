@@ -3,7 +3,8 @@
   lexicon definitions."
   (:require [clojure.core.logic :as l]
             [clojure.set :as set]
-            [clojure.test :as test])
+            [clojure.test :as test]
+            [clojure.math.combinatorics :as combo])
   (:use (acg-clj acg
                  lambda
                  utils
@@ -91,6 +92,29 @@
       (for-map [[a-type o-type] type-al]
                a-type
                o-type))))
+
+(defn find-smallest-inconsistency
+  "Finds the smallest subset of `test-consts' for which there is no
+  consistent type homomorphism and returns it, annotated with the
+  object term, types and partial type homomorphisms."
+  [lexicono test-consts]
+  (first (for [test-subset (combo/subsets test-consts)
+               ; Here we rely on the fact that combo/subsets returns
+               ; the subsets ordered from smallest to largest, which
+               ; is not promised in the docs.
+               :when (not (seq (find-type-homomorphisms lexicono test-subset)))]
+           (for [a-const test-subset]
+             (assoc (first (l/run 1 [q]
+                            (l/fresh [a-term a-type o-term o-type type-al]
+                                     (l/== a-term (rt a-const))
+                                     (top-typeo a-term a-type)
+                                     (lexicono a-term o-term)
+                                     (top-typeo o-term o-type)
+                                     (l/== q {:abs-const a-const
+                                              :abs-const-type a-type
+                                              :obj-term o-term
+                                              :obj-term-type o-type}))))
+               :type-homomorphisms (find-type-homomorphisms lexicono [a-const]))))))
 
 
 (defn test-lexicon-fn
