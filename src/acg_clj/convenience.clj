@@ -18,7 +18,7 @@
   (use 'acg-clj.lambda)
   (use 'acg-clj.termix)
   (use 'acg-clj.testing)
-  (use 'acg-clj.lexicon))
+  (use 'acg-clj.lexdb))
 
 (defmacro with-words
   "Expects a signature and a vector of bindings in which names are

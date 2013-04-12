@@ -4,7 +4,7 @@
   (:require [clojure.core.logic :as l]
             [clojure.core.logic.nominal :as n])
   (:use (acg-clj lambda
-                 lexicon
+                 lexdb
                  utils)
         plumbing.core))
 
@@ -20,7 +20,8 @@
 
 (defn sig-lexr
   "Given `signature', returns a relation saying that `constant' is a
-  lexical (induced from lexicon) constant of the signature."
+  lexical (induced from the lexical database) constant of the
+  signature."
   [signature]
   (fn [constant]
     (if (contains? signature :lex-typespeco)
@@ -29,7 +30,7 @@
                                :id {:lex-entry {:wordform wordform
                                                 :hypertag hypertag}
                                     :spec spec}})
-               (lexicono wordform hypertag)
+               (lexdbo wordform hypertag)
                ((:lex-typespeco signature) wordform hypertag spec type))
       l/fail)))
 

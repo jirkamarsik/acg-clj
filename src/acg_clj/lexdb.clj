@@ -1,6 +1,6 @@
-(ns acg-clj.lexicon
-  "Code needed to load in the lexicon produced by a Lexicomp dump and
-  to provide a relational interface to its contents."
+(ns acg-clj.lexdb
+  "Code needed to load in the lexical database produced by a Lexicomp
+  dump and to provide a relational interface to its contents."
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.core.logic :as l]))
@@ -17,9 +17,9 @@
                   fval (string/split fval #"\|")]
               [fpath fval]))))
 
-(defn read-lexicon
-  "Given the lines of a Lexicomp dump file, produces a lexicon in the
-  form of a map from wordforms to vectors of possible
+(defn read-lexdb
+  "Given the lines of a Lexicomp dump file, produces a lexical
+  database in the form of a map from wordforms to vectors of possible
   hypertags (enriched with head.lemma)."
   [lex-lines]
   (persistent!
@@ -34,13 +34,13 @@
 
 (def lex-dump
   "Path to the Lexicomp dump file from which we will read our
-  lexicon."
+  lexical database."
   "../frig/frilex/frilex.dump")
 
-(defonce ^{:doc "Our lexicon, a map from wordforms to vectors of possible
-  hypertags."} lexicon
+(defonce ^{:doc "Our lexical database, a map from wordforms to vectors
+  of possible hypertags."} lexdb
   (with-open [lex-rdr (io/reader lex-dump)]
-    (read-lexicon (line-seq lex-rdr))))
+    (read-lexdb (line-seq lex-rdr))))
 
 
 (defn membero!
@@ -54,17 +54,18 @@
              [(membero! x (rest l))])
     l/fail))
 
-;; TODO: The lexicon should undo the factorization done using
+;; TODO: lexdbo should undo the factorization done using
 ;;       optional features in Frilex.
-(defn lexicono
-  "The relation interface to the lexicon. Succeeds if `hypertag' is a
-  valid hypertag for the wordform `wordform'. Tries to be as efficient
-  as possible given the groundedness of its arguments."
+(defn lexdbo
+  "The relation interface to the lexical database. Succeeds if
+  `hypertag' is a valid hypertag for the wordform `wordform'. Tries to
+  be as efficient as possible given the groundedness of its
+  arguments."
   [wordform hypertag]
   (l/project [wordform]
              (if (string? wordform)
-               (l/membero hypertag (lexicon wordform))
+               (l/membero hypertag (lexdb wordform))
                (l/fresh [hypertags]
-                        (membero! [wordform hypertags] lexicon)
+                        (membero! [wordform hypertags] lexdb)
                         (l/membero hypertag hypertags)))))
 
