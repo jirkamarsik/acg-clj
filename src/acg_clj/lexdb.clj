@@ -3,7 +3,10 @@
   dump and to provide a relational interface to its contents."
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
-            [clojure.core.logic :as l]))
+            [clojure.core.logic :as l]
+            [monads.core :refer :all]
+            [monads.util :refer [fold-m]]
+            [monads.list :as list]))
 
 (defn parse-hypertag
   "Translates a representation of a hypertag used in Lexicomp's dump
@@ -59,6 +62,35 @@
     (l/conde [(l/== x (first l))]
              [(membero! x (rest l))])
     l/fail))
+
+(defn opt-feat?
+  "Tests whether `key' is an optional feature (ends with '?')."
+  [key]
+  (.endsWith (name key) "?"))
+
+(defn remove-question-mark
+  "Strips away the last character of a keyword."
+  [key]
+  (let [n (name key)]
+    (keyword (namespace key) (.substring n 0 (dec (count n))))))
+
+(defn conj-me-maybe
+  "Conjes the `[k v]' pair into the `hypertag'... or not, depending
+  on whether `k' is optional (?). Returns monadic value."
+  [hypertag [k v]]
+  (if (opt-feat? k)
+    (mplus (return (conj hypertag [(remove-question-mark k) v]))
+           (return hypertag))
+    (return (conj hypertag [k v]))))
+
+;; NOTE: The factoring should be "correctly" done recursively on all
+;; levels, not just at the top level. However, the data we process only
+;; admits optional features at the toplevel.
+(defn factor-opt-feats
+  "Factors a hypertag with optional features into a collection of
+  hypertags with each feature either removed or made mandatory."
+  [hypertag]
+  (run-monad list/m (fold-m conj-me-maybe {} hypertag)))
 
 ;; TODO: lexdbo should undo the factorization done using
 ;;       optional features in Frilex.
