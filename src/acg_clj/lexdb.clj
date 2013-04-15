@@ -13,6 +13,12 @@
           {}
           (for [assignment (string/split hypertag-text #", ")]
             (let [[fpath fval] (string/split assignment #"=")
+                  ; The following line fixes a slight inconsistency in
+                  ; Lexicomp's dump file format where optional
+                  ; features are marked at the end of the feature path
+                  ; instead of at the name of the optional feature.
+                  ; TODO: Fix in upstream!
+                  fpath (string/replace fpath #"(\w+)\.(\w+)\?" "$1?.$2")
                   fpath (map keyword (string/split fpath #"\."))
                   fval (string/split fval #"\|")]
               [fpath fval]))))
@@ -68,4 +74,3 @@
                (l/fresh [hypertags]
                         (membero! [wordform hypertags] lexdb)
                         (l/membero hypertag hypertags)))))
-
