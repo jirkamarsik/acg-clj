@@ -5,8 +5,10 @@
             [clojure.string :as string]
             [clojure.core.logic :as l]
             [monads.core :refer :all]
-            [monads.util :refer [fold-m]]
-            [monads.list :as list]))
+            [monads.util :refer [sequence-m msum fold-m]]
+            [monads.list :as list])
+  (:use plumbing.core)
+  (:use (acg-clj utils)))
 
 (defn parse-hypertag
   "Translates a representation of a hypertag used in Lexicomp's dump
@@ -16,12 +18,6 @@
           {}
           (for [assignment (string/split hypertag-text #", ")]
             (let [[fpath fval] (string/split assignment #"=")
-                  ; The following line fixes a slight inconsistency in
-                  ; Lexicomp's dump file format where optional
-                  ; features are marked at the end of the feature path
-                  ; instead of at the name of the optional feature.
-                  ; TODO: Fix in upstream!
-                  fpath (string/replace fpath #"(\w+)\.(\w+)\?" "$1?.$2")
                   fpath (map keyword (string/split fpath #"\."))
                   fval (string/split fval #"\|")]
               [fpath fval]))))
@@ -63,6 +59,7 @@
              [(membero! x (rest l))])
     l/fail))
 
+
 (defn opt-feat?
   "Tests whether `key' is an optional feature (ends with '?')."
   [key]
@@ -76,21 +73,39 @@
 
 (defn conj-me-maybe
   "Conjes the `[k v]' pair into the `hypertag'... or not, depending
-  on whether `k' is optional (?). Returns monadic value."
+  on whether `k' is optional (?). Returns a monadic value."
   [hypertag [k v]]
   (if (opt-feat? k)
     (mplus (return (conj hypertag [(remove-question-mark k) v]))
            (return hypertag))
     (return (conj hypertag [k v]))))
 
-;; NOTE: The factoring should be "correctly" done recursively on all
-;; levels, not just at the top level. However, the data we process only
-;; admits optional features at the toplevel.
 (defn factor-opt-feats
-  "Factors a hypertag with optional features into a collection of
-  hypertags with each feature either removed or made mandatory."
+  "Turns every optional feature in `hypertag' into either a mandatory
+  feature or no feature. Returns a monadic value."
   [hypertag]
-  (run-monad list/m (fold-m conj-me-maybe {} hypertag)))
+  (if (map? hypertag)
+    (>>= (fold-m conj-me-maybe {} hypertag)
+         (partial map-vals-m factor-opt-feats))
+    (return hypertag)))
+
+(defn factor-alt-values
+  "Turns every list of possible feature values in `hypertag' into one of
+  the possible values. Returns a monadic value."
+  [hypertag]
+  (cond (map? hypertag) (map-vals-m factor-alt-values hypertag)
+        (vector? hypertag) (msum (map return hypertag))
+        :else (return hypertag)))
+
+(defn factor-hypertag
+  "Given a `hypertag' with optional features and vectors of possible
+  values for feature values, returns a sequence of all the hypertags with
+  each feature either made mandatory or removed, with each feature having
+  only one possible value."
+  [hypertag]
+  (run-monad list/m (reduce >>= (return hypertag)
+                            [factor-opt-feats factor-alt-values])))
+
 
 ;; TODO: lexdbo should undo the factorization done using
 ;;       optional features in Frilex.

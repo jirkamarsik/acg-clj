@@ -2,7 +2,9 @@
   "A medley of generally useful things which don't really fit anywhere
   else."
   (:require [clojure.core.logic :as l]
-            [clojure.set :as set])
+            [clojure.set :as set]
+            [monads.core :refer :all]
+            [monads.util :refer [sequence-m]])
   (:use plumbing.core))
 
 (defn mapuni
@@ -176,3 +178,21 @@
   by the relation's name."
   [schema]
   `(do ~@(accessor-defs [] schema)))
+
+(defn map-m
+  "Applies a function over collections, just like `map'. The function
+  `f' should return monadic computations, which will all be bound
+  sequentially to produce a computation which yields the sequence of
+  values (mapM :: (a -> M b) -> [a] -> M [b] in Haskell)"
+  [f & colls]
+  (sequence-m (apply map f colls)))
+
+(defn map-vals-m
+  "`map-vals-m' is to `map-vals' what `map-m' is to `map'."
+  [f m]
+  (>>= (map-m (fn [[key value]]
+                (>>= (f value)
+                     (fn [value'] (return [key value']))))
+              m)
+       (fn [kvps]
+         (return (into {} kvps)))))
