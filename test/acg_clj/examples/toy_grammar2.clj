@@ -8,7 +8,8 @@
   (:require [clojure.core.logic :as l])
   (:use (acg-clj [acg :rename {--> ->, ==> =>}]
                  lambda
-                 [termix :only [rt]])
+                 [termix :only [rt]]
+                 utils)
         [acg-clj.examples.toy-grammar :only [l-string-sig string-sig sim-sem-sig
                                              string->l-string-lexo]]))
 
@@ -16,24 +17,21 @@
   "A signature for a level of syntactical description which
   distinguishes between different scope readings of verbs by using
   different constants for each reading."
-  {:principal-type 'S
-   :lex-typespeco (fn [wordform hypertag spec type]
-                    (l/conde [(fs-assigne hypertag                 type
-                                          {:head {:cat "n"}}       'N
-                                          {:head {:cat "adj"
-                                                  :order "left"}}  (-> 'N 'N)
-                                          {:head {:cat "adj"
-                                                  :order "right"}} (-> 'N 'N)
-                                          {:head {:cat "v"
-                                                  :trans "false"}} (-> 'NP 'S)
-                                          {:head {:cat "det"}}     (-> 'N 'NP))
-                              (l/== spec nil)]
-                             [(fs-matche hypertag
-                                         [{:head {:cat "v"
-                                                  :trans "true"}}
-                                          (l/== type (-> 'NP 'NP 'S))
-                                          (l/membero spec [{:scope :subject}
-                                                           {:scope :object}])])]))})
+  (ors (ht->typer {{:head {:cat "n"}}       'N
+                   {:head {:cat "adj"
+                           :order "left"}}  (-> 'N 'N)
+                   {:head {:cat "adj"
+                           :order "right"}} (-> 'N 'N)
+                   {:head {:cat "v"
+                           :trans "false"}} (-> 'NP 'S)
+                   {:head {:cat "det"}}     (-> 'N 'NP)})
+       (lex-sigr (fn [wordform hypertag spec type]
+                   (fs-matche hypertag
+                              [{:head {:cat "v"
+                                       :trans "true"}}
+                               (l/== type (-> 'NP 'NP 'S))
+                               (l/membero spec [{:scope :subject}
+                                                {:scope :object}])])))))
 
 
 (defn stx->string-lexo
@@ -43,7 +41,7 @@
   (with-sig-consts string-sig
     (l/fresh [string-constant hypertag]
              (share-lex-entryo stx-constant string-constant)
-             ((sig-lexr string-sig) string-constant)
+             (string-sig string-constant)
              (has-hypertago stx-constant hypertag)
              (let [prefix (rt (ll [x] (++ string-constant x)))
                    suffix (rt (ll [x] (++ x string-constant)))
@@ -69,7 +67,7 @@
     (l/fresh [sim-sem-constant hypertag]
              (has-hypertago stx-constant hypertag)
              (l/conde [(share-lex-entryo stx-constant sim-sem-constant)
-                       ((sig-lexr sim-sem-sig) sim-sem-constant)
+                       (sim-sem-sig sim-sem-constant)
                        (fs-assigne hypertag sim-sem-term
                                    {:head {:cat "n"}}
                                    ,(rt sim-sem-constant)
@@ -80,7 +78,7 @@
                                            :trans "false"}}
                                    ,(rt (ll [S] (S (ll [x] (sim-sem-constant x))))))]
                       [(share-lex-entryo stx-constant sim-sem-constant)
-                       ((sig-lexr sim-sem-sig) sim-sem-constant)
+                       (sim-sem-sig sim-sem-constant)
                        (fs-matche hypertag
                                   [{:head {:cat "v"
                                            :trans "true"}}

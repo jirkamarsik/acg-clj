@@ -7,7 +7,7 @@
             [monads.util :refer [sequence-m]])
   (:use plumbing.core))
 
-(defn mapuni
+(defn mapion
   "Just like mapcat, but does a set/union instead of concat."
   [f & colls]
   (apply set/union (apply map f colls)))
@@ -87,6 +87,35 @@
   ([goal & goals]
      (l/all goal
             (apply andg goals))))
+
+(defn raise-operation
+  "Takes an operation and returns its 'raised' version which operates on
+  functions. In short, this is what you would apply to the numeric '+'
+  to get the '+' which adds functions."
+  [op]
+  (fn [& fns]
+    (fn [& args]
+      (apply op (map #(apply % args) fns)))))
+
+(def orr
+  "Takes relations and computes their disjunction. All arguments passed
+  to the new relation will be forwarded to all of the constituent
+  relations."
+  (raise-operation org))
+
+(def andr
+  "Takes relations and computes their conjunction. All arguments passed
+  to the new relation will be forwarded to all of the constituent
+  relations."
+  (raise-operation andg))
+
+(defn ors
+  "Computes the union of signatures. Apart from just computing the
+  disjunction of the relations, it also manages the listing of
+  non-lexical :constants stored in the metadata."
+  [& sigs]
+  (with-meta (apply orr sigs)
+    (apply merge-with merge (map meta sigs))))
 
 (defn compg
   "Like comp, but composes binary relations that encode functions."

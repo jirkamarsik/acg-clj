@@ -6,7 +6,16 @@
 
 * Write tests!!!
 
+* Rename :principal-type to :distinguished-type
+
 * Maybe move everything form utils.clj to the place where it is
   actually used?
     * assoco -> check.clj
     * retrievec -> acg.clj
+
+* Maybe represent terms using some abstract protocol which can support
+  looking at the term either using its AST form or its human-readable
+  form (lenses)
+
+* As we enrich the type system, it would be a nice to a have similarly
+  rigorous internal representation of types as we do with terms (ASTs).

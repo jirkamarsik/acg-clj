@@ -157,7 +157,7 @@
      (l/membero lam '[llam ilam])
      (l/fresh [body body']
               (n/fresh [var]
-                       (l/== binder (n/tie var body)) 
+                       (l/== binder (n/tie var body))
                        (l/== binder' (n/tie var body'))
                        (stepo body body')))))
 

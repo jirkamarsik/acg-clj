@@ -19,9 +19,11 @@
   (l/run* [const]
           (l/conde [(l/fresh [wordform]
                              (has-wordformo const wordform)
-                             (l/membero wordform wordforms)
-                             ((sig-lexr signature) const))]
-                   [((sig-constr signature) const)])))
+                             (l/membero wordform wordforms))]
+                   [(l/fresh [name]
+                             (has-constant-nameo const name)
+                             (l/membero name (keys (:constants (meta signature)))))])
+          (signature const)))
 
 (defn consts-with-lex-image
   "Finds all the constants belonging to `signature' that have some
@@ -76,7 +78,7 @@
   `test-consts' and the object types of the terms assigned to them by
   the lexicon `lexicono'."
   [lexicono test-consts]
-  (let [atomic-abstract-types (mapuni (comp get-atomic-types :type) test-consts)
+  (let [atomic-abstract-types (mapion (comp get-atomic-types :type) test-consts)
         type-als (l/run* [type-al]
                          (keyso type-al (vec atomic-abstract-types))
                          (l/everyg

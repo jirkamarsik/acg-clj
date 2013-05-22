@@ -8,39 +8,33 @@
                  utils)
         plumbing.core))
 
-(defn sig-constr
-  "Given `signature', returns a relation saying that `constant' is an
-  extra-lexical (explicitly declared) constant of the signature."
-  [signature]
+(defn lex-sigr
+  "Given `typespeco', a 4-ary relation between a wordform, a hypertag, a
+  specifier and a type, returns a signature of lexical constants such
+  that whenever a wordform and a hypertag form an entry in the lexical
+  database, the signature will contain constants for every pair of
+  specifier and type such that the four elements together satisfy the
+  `typespeco' relation."
+  [typespeco]
   (fn [constant]
-    (l/fresh [name type]
+    (l/fresh [wordform hypertag spec type]
              (l/== constant {:type type
-                             :id {:constant-name name}})
-             (l/membero [name type] (seq (:constants signature))))))
+                             :id {:lex-entry {:wordform wordform
+                                              :hypertag hypertag}
+                                  :spec spec}})
+             (lexdbo wordform hypertag)
+             (typespeco wordform hypertag spec type))))
 
-(defn sig-lexr
-  "Given `signature', returns a relation saying that `constant' is a
-  lexical (induced from the lexical database) constant of the
-  signature."
-  [signature]
-  (fn [constant]
-    (if (contains? signature :lex-typespeco)
-      (l/fresh [wordform hypertag spec type]
-               (l/== constant {:type type
-                               :id {:lex-entry {:wordform wordform
-                                                :hypertag hypertag}
-                                    :spec spec}})
-               (lexdbo wordform hypertag)
-               ((:lex-typespeco signature) wordform hypertag spec type))
-      l/fail)))
-
-(defn sigr
-  "Given `signature', returns a relation saying that `constant' is a
-  constant of the signature."
-  [signature]
-  (fn [constant]
-    (l/conde [((sig-constr signature) constant)]
-             [((sig-lexr signature) constant)])))
+(defn unlex-sigr
+  "Given a map from symbolic names of constants to their types, returns
+  the signature of non-lexical constants having those names and types."
+  [constants]
+  (with-meta (fn [constant]
+               (l/fresh [name type]
+                        (l/== constant {:type type
+                                        :id {:constant-name name}})
+                        (l/membero [name type] (seq constants))))
+    {:constants constants}))
 
 ;; Define accessor relations for all the fields of the constant
 ;; objects.
@@ -113,13 +107,12 @@
 
 
 (defn unitypedr
-  "Returns a :lex-typespeco (a relation linking a wordform, a
-  hypertag, a specifier and a type), that always assigns the type
-  `unitype' and a nil spec."
+  "Returns a signature of lexical constants that all have the same type
+  `unitype' and the nil specifier."
   [unitype]
-  (fn [wordform hypertag spec type]
-    (l/all (l/== type unitype)
-           (l/== spec nil))))
+  (lex-sigr (fn [wordform hypertag spec type]
+              (l/all (l/== type unitype)
+                     (l/== spec nil)))))
 
 (defn fs-matche
   "Like core.logic's matche, but instead of a vector of terms to be
@@ -150,31 +143,33 @@
            [pattern (l/== target value)])))
 
 (defn ht->typer
-  "Returns a :lex-typespeco that tries to match the hypertag to the
-  keys of the `patterns' map as in fs-matche and fs-assigne and
-  assigns the respective values of the patterns as types. The
-  specifier is set as nil."
+  "Returns a signature of lexical constants in which hypertags of
+  lexical entries are matched to the keys of the `patterns' map as in
+  fs-matche and fs-assigne and assigned the respective values of the
+  patterns as types. The specifier of all constants is set to nil."
   [patterns]
-  (fn [wordform hypertag spec type]
-    (l/all (apply fs-assigne hypertag type (apply concat patterns))
-           (l/== spec nil))))
+  (lex-sigr (fn [wordform hypertag spec type]
+              (l/all (apply fs-assigne hypertag type (apply concat patterns))
+                     (l/== spec nil)))))
 
 (defmacro with-sig-consts
   "An anaphoric macro useful for writing down lexicons. It opens a
-  *fresh* scope with variables for all the extra-lexical constants of
-  the given signature."
+  *fresh* scope with variables for all the non-lexical constants of the
+  given signature."
   [signature & goals]
-  (let [consts (keys (:constants (eval signature)))]
-    `(l/fresh ~(vec consts)
-              ~@(for [const consts]
-                  `(l/all (has-constant-nameo ~const '~const)
-                          ((sig-constr ~signature) ~const)))
-              ~@goals)))
+  (let [consts (keys (:constants (meta (eval signature))))
+        signature-sym (gensym "signature")]
+    `(let [~signature-sym ~signature]
+       (l/fresh ~(vec consts)
+                ~@(for [const consts]
+                    `(l/all (has-constant-nameo ~const '~const)
+                            (~signature-sym ~const)))
+                ~@goals))))
 
 (defn const-lexiconr
-  "Returns a lexicon that simply maps (extra-lexical) constants
-  according to their names (keys of the `translation-map') to the
-  target terms (values of the `translation-map')."
+  "Returns a lexicon that maps non-lexical constants according to their
+  names (keys of the `translation-map') to the target terms (values of
+  the `translation-map')."
   [translation-map]
   (fn [abs-const obj-term]
     (l/fresh [abs-const-name]
