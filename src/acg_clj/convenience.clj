@@ -59,7 +59,7 @@
                                    term)]
       (l/all (l/everyg (fn [[c w]]
                          (l/all (has-wordformo c w)
-                                ((sig-lexr sig) c)))
+                                (sig c)))
                        (seq @lvar-string-map))
              (l/== out lvar-term)))))
 
