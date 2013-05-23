@@ -68,17 +68,16 @@
               {:head {:cat "det"}}     (-> 'N (-> 'NP 'S) 'S)}))
 
 
-(defn string->l-string-lexo
+(def string->l-string-lexo
   "A lexicon from the string signature to the l-string signature.
   Basically just implements the string concatenation operator using
   function composotion."
-  [string-constant l-string-term]
-  (l/conde [(l/fresh [l-string-constant]
-                     (share-lex-entryo string-constant l-string-constant)
-                     (l-string-sig l-string-constant)
-                     (l/== l-string-term (rt l-string-constant)))]
-           [((const-lexiconr {'++ (rt (ll [x y t] (x (y t))))})
-             string-constant l-string-term)]))
+  (orr (const-lexiconr {'++ (rt (ll [x y t] (x (y t))))})
+       (fn [string-constant l-string-term]
+         (l/fresh [l-string-constant]
+                  (share-lex-entryo string-constant l-string-constant)
+                  (l-string-sig l-string-constant)
+                  (l/== l-string-term (rt l-string-constant))))))
 
 (defn ua-stx->string-lexo
   "A lexicon from the ua-stx signature to the string signature.
