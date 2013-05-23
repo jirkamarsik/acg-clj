@@ -25,7 +25,7 @@
              (lexdbo wordform hypertag)
              (typespeco wordform hypertag spec type))))
 
-(defn unlex-sigr
+(defn nonlex-sigr
   "Given a map from symbolic names of constants to their types, returns
   the signature of non-lexical constants having those names and types."
   [constants]

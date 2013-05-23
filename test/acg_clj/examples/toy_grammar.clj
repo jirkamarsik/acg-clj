@@ -17,7 +17,7 @@
 (def string-sig
   "A signature of the algebra of strings with a binary concatenation
   operator."
-  (ors (unlex-sigr {'++ (-> 'Str 'Str 'Str)})
+  (ors (nonlex-sigr {'++ (-> 'Str 'Str 'Str)})
        (unitypedr 'Str)))
 
 (def ua-stx-sig
@@ -37,14 +37,14 @@
 (def sim-sem-sig
   "A signature for simple semantic representations. Contains the usual
   logical furniture and predicates for the lexical items."
-  (ors (unlex-sigr {'and?    (-> 'T 'T 'T)
-                    'or?     (-> 'T 'T 'T)
-                    'not?    (-> 'T 'T)
-                    'imp?    (-> 'T 'T 'T)
-                    'top     'T
-                    'bottom  'T
-                    'forall? (-> (=> 'E 'T) 'T)
-                    'exists? (-> (=> 'E 'T) 'T)})
+  (ors (nonlex-sigr {'and?    (-> 'T 'T 'T)
+                     'or?     (-> 'T 'T 'T)
+                     'not?    (-> 'T 'T)
+                     'imp?    (-> 'T 'T 'T)
+                     'top     'T
+                     'bottom  'T
+                     'forall? (-> (=> 'E 'T) 'T)
+                     'exists? (-> (=> 'E 'T) 'T)})
        (ht->typer {{:head {:cat "n"}}       (=> 'E 'T)
                    {:head {:cat "adj"}}     (-> 'E 'T)
                    {:head {:cat "v"
