@@ -34,7 +34,7 @@
      (l/fresh ~(vec (take-nth 2 word-bindings))
               (l/everyg (fn [[c# w#]]
                           (l/all (has-wordformo c# w#)
-                                 ((sig-lexr sig#) c#)))
+                                 (sig# c#)))
                         (partition 2 ~word-bindings))
               ~@goals)))
 

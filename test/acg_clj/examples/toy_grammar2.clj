@@ -34,66 +34,56 @@
                                                 {:scope :object}])])))))
 
 
-(defn stx->string-lexo
+(def stx->string-lexo
   "A lexicon from the stx signature to the string signature.
   Responsible for determining the word order between constituents."
-  [stx-constant string-term]
   (with-sig-consts string-sig
-    (l/fresh [string-constant hypertag]
-             (share-lex-entryo stx-constant string-constant)
-             (string-sig string-constant)
-             (has-hypertago stx-constant hypertag)
-             (let [prefix (rt (ll [x] (++ string-constant x)))
-                   suffix (rt (ll [x] (++ x string-constant)))
-                   infix (rt (ll [x y] (++ (++ x string-constant) y)))]
-               (fs-assigne hypertag                 string-term
-                           {:head {:cat "n"}}       (rt string-constant)
-                           {:head {:cat "adj"
-                                   :order "right"}} suffix
-                           {:head {:cat "adj"
-                                   :order "left"}}  prefix
-                           {:head {:cat "det"}}     prefix
-                           {:head {:cat "v"
-                                   :trans "false"}} suffix
-                           {:head {:cat "v"
-                                   :trans "true"}}  infix)))))
+    (let [const (rt (ll [_] _))
+          prefix (rt (ll [_ x] (++ _ x)))
+          suffix (rt (ll [_ x] (++ x _)))
+          infix (rt (ll [_ x y] (++ (++ x _) y)))]
+      (lexicalizer string-sig
+                   (ht-lexiconr {{:head {:cat "n"}}       const
+                                 {:head {:cat "adj"
+                                         :order "right"}} suffix
+                                 {:head {:cat "adj"
+                                         :order "left"}}  prefix
+                                 {:head {:cat "det"}}     prefix
+                                 {:head {:cat "v"
+                                         :trans "false"}} suffix
+                                 {:head {:cat "v"
+                                         :trans "true"}}  infix})))))
 
-(defn stx->sim-sem-lexo
+(def stx->sim-sem-lexo
   "A lexicon from the a-stx signature to the sim-sem signature.
   Determines how the predicates of the individual constituents
   combine, implements determiners."
-  [stx-constant sim-sem-term]
   (with-sig-consts sim-sem-sig
-    (l/fresh [sim-sem-constant hypertag]
-             (has-hypertago stx-constant hypertag)
-             (l/conde [(share-lex-entryo stx-constant sim-sem-constant)
-                       (sim-sem-sig sim-sem-constant)
-                       (fs-assigne hypertag sim-sem-term
-                                   {:head {:cat "n"}}
-                                   ,(rt sim-sem-constant)
-                                   {:head {:cat "adj"}}
-                                   ,(rt (ll [n] (il [x] (and? (sim-sem-constant x)
-                                                              (n x)))))
-                                   {:head {:cat "v"
-                                           :trans "false"}}
-                                   ,(rt (ll [S] (S (ll [x] (sim-sem-constant x))))))]
-                      [(share-lex-entryo stx-constant sim-sem-constant)
-                       (sim-sem-sig sim-sem-constant)
-                       (fs-matche hypertag
-                                  [{:head {:cat "v"
-                                           :trans "true"}}
-                                   (l/fresh [spec]
-                                            (has-speco stx-constant spec)
-                                            (l/conde [(l/== spec {:scope :subject})
-                                                      (l/== sim-sem-term ,(rt (ll [O S] (S [ll [x] (O (ll [y] (sim-sem-constant x y)))]))))]
-                                                     [(l/== spec {:scope :object})
-                                                      (l/== sim-sem-term ,(rt (ll [O S] (O [ll [y] (S (ll [x] (sim-sem-constant x y)))]))))]))])]
-                      [(fs-assigne hypertag sim-sem-term
-                                   {:head {:cat "det"
-                                           :det_type "indef"}}
-                                   ,(rt (ll [p q] (exists? (il [x] (and? (p x)
-                                                                         (q x))))))
-                                   {:head {:cat "det"
-                                           :det_type "def"}}
-                                   ,(rt (ll [p q] (forall? (il [x] (imp? (p x)
-                                                                         (q x)))))))]))))
+    (orr (lexicalizer sim-sem-sig
+                      (orr (ht-lexiconr {{:head {:cat "n"}}
+                                         ,(rt (ll [_] _))
+                                         {:head {:cat "adj"}}
+                                         ,(rt (ll [_ n] (il [x] (and? (_ x) (n x)))))
+                                         {:head {:cat "v"
+                                                 :trans "false"}}
+                                         ,(rt (ll [_ S] (S (ll [x] (_ x)))))})
+                           (fn [stx-constant sim-sem-term]
+                             (l/fresh [hypertag]
+                               (has-hypertago stx-constant hypertag)
+                               (fs-matche hypertag
+                                 [{:head {:cat "v"
+                                          :trans "true"}}
+                                  (l/fresh [spec]
+                                    (has-speco stx-constant spec)
+                                    (l/conde [(l/== spec {:scope :subject})
+                                              (l/== sim-sem-term
+                                                    ,(rt (ll [_ O S] (S (ll [x] (O (ll [y] (_ x y))))))))]
+                                             [(l/== spec {:scope :object})
+                                              (l/== sim-sem-term
+                                                    ,(rt (ll [_ O S] (O (ll [y] (S (ll [x] (_ x y))))))))]))])))))
+         (ht-lexiconr {{:head {:cat "det"
+                               :det_type "indef"}}
+                       ,(rt (ll [p q] (exists? (il [x] (and? (p x) (q x))))))
+                       {:head {:cat "det"
+                               :det_type "def"}}
+                       ,(rt (ll [p q] (forall? (il [x] (imp? (p x) (q x))))))}))))

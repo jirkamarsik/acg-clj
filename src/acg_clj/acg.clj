@@ -5,7 +5,8 @@
             [clojure.core.logic.nominal :as n])
   (:use (acg-clj lambda
                  lexdb
-                 utils)
+                 utils
+                 [termix :only [rt]])
         plumbing.core))
 
 (defn lex-sigr
@@ -34,7 +35,10 @@
                         (l/== constant {:type type
                                         :id {:constant-name name}})
                         (l/membero [name type] (seq constants))))
-    {:constants constants}))
+    {:non-lexicals (for-map [[name type] constants]
+                     name
+                     {:type type
+                      :id {:constant-name name}})}))
 
 ;; Define accessor relations for all the fields of the constant
 ;; objects.
@@ -156,17 +160,12 @@
   "An anaphoric macro useful for writing down lexicons. It opens a
   *fresh* scope with variables for all the non-lexical constants of the
   given signature."
-  [signature & goals]
-  (let [consts (keys (:constants (meta (eval signature))))
-        signature-sym (gensym "signature")]
-    `(let [~signature-sym ~signature]
-       (l/fresh ~(vec consts)
-                ~@(for [const consts]
-                    `(l/all (has-constant-nameo ~const '~const)
-                            (~signature-sym ~const)))
-                ~@goals))))
+  [signature & body]
+  (let [non-lexicals (:non-lexicals (meta (eval signature)))]
+    `(let ~(vec (mapcat (fn [[k v]] [k `'~v]) non-lexicals))
+       ~@body)))
 
-(defn const-lexiconr
+(defn nonlex-lexiconr
   "Returns a lexicon that maps non-lexical constants according to their
   names (keys of the `translation-map') to the target terms (values of
   the `translation-map')."
@@ -175,3 +174,24 @@
     (l/fresh [abs-const-name]
              (has-constant-nameo abs-const abs-const-name)
              (l/membero [abs-const-name obj-term] (seq translation-map)))))
+
+(defn const-lexiconr
+  [const-obj-term]
+  (fn [abs-const obj-term]
+    (l/== obj-term const-obj-term)))
+
+(defn ht-lexiconr
+  [patterns]
+  (fn [abs-const obj-term]
+    (l/fresh [hypertag]
+             (has-hypertago abs-const hypertag)
+             (apply fs-assigne hypertag obj-term (apply concat patterns)))))
+
+(defn lexicalizer
+  [obj-sig lexo]
+  (fn [abs-const obj-term]
+    (l/fresh [obj-const obj-recipe]
+             (share-lex-entryo abs-const obj-const)
+             (obj-sig obj-const)
+             (lexo abs-const obj-recipe)
+             (l/== obj-term ['app obj-recipe (rt obj-const)]))))

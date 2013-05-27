@@ -72,79 +72,57 @@
   "A lexicon from the string signature to the l-string signature.
   Basically just implements the string concatenation operator using
   function composotion."
-  (orr (const-lexiconr {'++ (rt (ll [x y t] (x (y t))))})
-       (fn [string-constant l-string-term]
-         (l/fresh [l-string-constant]
-                  (share-lex-entryo string-constant l-string-constant)
-                  (l-string-sig l-string-constant)
-                  (l/== l-string-term (rt l-string-constant))))))
+  (orr (nonlex-lexiconr {'++ (rt (ll [x y t] (x (y t))))})
+       (lexicalizer l-string-sig (const-lexiconr (rt (ll [_] _))))))
 
-(defn ua-stx->string-lexo
+(def ua-stx->string-lexo
   "A lexicon from the ua-stx signature to the string signature.
   Responsible for determining the word order between constituents."
-  [ua-stx-constant string-term]
   (with-sig-consts string-sig
-    (l/fresh [string-constant hypertag]
-             (share-lex-entryo ua-stx-constant string-constant)
-             (string-sig string-constant)
-             (has-hypertago ua-stx-constant hypertag)
-             (let [prefix (rt (ll [x] (++ string-constant x)))
-                   suffix (rt (ll [x] (++ x string-constant)))
-                   infix (rt (ll [x y] (++ (++ x string-constant) y)))]
-               (fs-assigne hypertag                 string-term
-                           {:head {:cat "n"}}       (rt string-constant)
-                           {:head {:cat "adj"
-                                   :order "right"}} suffix
-                           {:head {:cat "adj"
-                                   :order "left"}}  prefix
-                           {:head {:cat "det"}}     prefix
-                           {:head {:cat "v"
-                                   :trans "false"}} suffix
-                           {:head {:cat "v"
-                                   :trans "true"}}  infix)))))
+    (let [const (rt (ll [_] _))
+          prefix (rt (ll [_ x] (++ _ x)))
+          suffix (rt (ll [_ x] (++ x _)))
+          infix (rt (ll [_ x y] (++ (++ x _) y)))]
+      (lexicalizer string-sig
+                   (ht-lexiconr {{:head {:cat "n"}}       const
+                                 {:head {:cat "adj"
+                                         :order "right"}} suffix
+                                 {:head {:cat "adj"
+                                         :order "left"}}  prefix
+                                 {:head {:cat "det"}}     prefix
+                                 {:head {:cat "v"
+                                         :trans "false"}} suffix
+                                 {:head {:cat "v"
+                                         :trans "true"}}  infix})))))
 
-(defn a-stx->ua-stx-lexo
+(def a-stx->ua-stx-lexo
   "A lexicon from the a-stx signature to the ua-stx signature.
   `Undoes` the type-raising of quantified noun phrases."
-  [a-stx-constant ua-stx-term]
-  (l/fresh [ua-stx-constant hypertag]
-           (share-lex-entryo a-stx-constant ua-stx-constant)
-           (ua-stx-sig ua-stx-constant)
-           (has-hypertago a-stx-constant hypertag)
-           (fs-assigne hypertag ua-stx-term
-                       {:head {:cat "n"}}
-                       ,(rt ua-stx-constant)
-                       {:head {:cat "adj"}}
-                       ,(rt ua-stx-constant)
-                       {:head {:cat "v"}}
-                       ,(rt ua-stx-constant)
-                       {:head {:cat "det"}}
-                       ,(rt (ll [x R] (R (ua-stx-constant x)))))))
+  (lexicalizer ua-stx-sig
+               (ht-lexiconr {{:head {:cat "n"}}
+                             ,(rt (ll [_] _))
+                             {:head {:cat "adj"}}
+                             ,(rt (ll [_] _))
+                             {:head {:cat "v"}}
+                             ,(rt (ll [_] _))
+                             {:head {:cat "det"}}
+                             ,(rt (ll [_ x R] (R (_ x))))})))
 
-(defn a-stx->sim-sem-lexo
+(def a-stx->sim-sem-lexo
   "A lexicon from the a-stx signature to the sim-sem signature.
   Determines how the predicates of the individual constituents
   combine, implements determiners."
-  [a-stx-constant sim-sem-term]
   (with-sig-consts sim-sem-sig
-    (l/fresh [sim-sem-constant hypertag]
-             (has-hypertago a-stx-constant hypertag)
-             (l/conde [(share-lex-entryo a-stx-constant sim-sem-constant)
-                       (sim-sem-sig sim-sem-constant)
-                       (fs-assigne hypertag sim-sem-term
-                                   {:head {:cat "n"}}
-                                   ,(rt sim-sem-constant)
-                                   {:head {:cat "adj"}}
-                                   ,(rt (ll [n] (il [x] (and? (sim-sem-constant x)
-                                                              (n x)))))
-                                   {:head {:cat "v"}}
-                                   ,(rt sim-sem-constant))]
-                      [(fs-assigne hypertag sim-sem-term
-                                   {:head {:cat "det"
-                                           :det_type "indef"}}
-                                   ,(rt (ll [p q] (exists? (il [x] (and? (p x)
-                                                                         (q x))))))
-                                   {:head {:cat "det"
-                                           :det_type "def"}}
-                                   ,(rt (ll [p q] (forall? (il [x] (imp? (p x)
-                                                                         (q x)))))))]))))
+    (orr (lexicalizer sim-sem-sig
+                      (ht-lexiconr {{:head {:cat "n"}}
+                                    ,(rt (ll [_] _))
+                                    {:head {:cat "adj"}}
+                                    ,(rt (ll [_ n] (il [x] (and? (_ x) (n x)))))
+                                    {:head {:cat "v"}}
+                                    ,(rt (ll [_] _))}))
+         (ht-lexiconr {{:head {:cat "det"
+                               :det_type "indef"}}
+                       ,(rt (ll [p q] (exists? (il [x] (and? (p x) (q x))))))
+                       {:head {:cat "det"
+                               :det_type "def"}}
+                       ,(rt (ll [p q] (forall? (il [x] (imp? (p x) (q x))))))}))))

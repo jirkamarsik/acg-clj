@@ -16,35 +16,35 @@
   lexical ones only to those that have one of the wordforms listed in
   `wordforms'."
   [signature wordforms]
-  (l/run* [const]
-          (l/conde [(l/fresh [wordform]
-                             (has-wordformo const wordform)
-                             (l/membero wordform wordforms))]
-                   [(l/fresh [name]
-                             (has-constant-nameo const name)
-                             (l/membero name (keys (:constants (meta signature)))))])
-          (signature const)))
+  (set (l/run* [const]
+               (l/conde [(l/fresh [wordform]
+                                  (has-wordformo const wordform)
+                                  (l/membero wordform wordforms))]
+                        [(l/fresh [name]
+                                  (has-constant-nameo const name)
+                                  (l/membero name (keys (:non-lexicals (meta signature)))))])
+               (signature const))))
 
 (defn consts-with-lex-image
   "Finds all the constants belonging to `signature' that have some
   image given by `lexicono', restricting the lexical constants only to
   the wordforms listed in `wordforms'."
   [signature lexicono wordforms]
-  (l/run* [const]
-          (l/fresh [lex-image]
-                   (l/membero const (all-consts signature wordforms))
-                   (lexicono (rt const) lex-image))))
+  (set (l/run* [const]
+               (l/fresh [lex-image]
+                        (l/membero const (seq (all-consts signature wordforms)))
+                        (lexicono (rt const) lex-image)))))
 
 (defn well-typed-consts
   "Finds all the constants belonging to `signature' whose image given
   by `lexicono' is well-typed, restricting the lexical constants by
   the list of wordforms `wordforms'."
   [signature lexicono wordforms]
-  (l/run* [const]
-          (l/fresh [lex-image lex-image-type]
-                   (l/membero const (all-consts signature wordforms))
-                   (lexicono (rt const) lex-image)
-                   (top-typeo lex-image lex-image-type))))
+  (set (l/run* [const]
+               (l/fresh [lex-image lex-image-type]
+                        (l/membero const (seq (all-consts signature wordforms)))
+                        (lexicono (rt const) lex-image)
+                        (top-typeo lex-image lex-image-type)))))
 
 
 (defn type-assigno
